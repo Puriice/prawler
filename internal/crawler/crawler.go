@@ -1,11 +1,11 @@
 package crawler
 
 import (
-	"fmt"
-	"io"
-	"net/http"
+	"encoding/json"
 
+	"github.com/purrice/prawler/internal/model"
 	"github.com/purrice/prawler/internal/repository"
+	"github.com/purrice/prawler/internal/robots"
 )
 
 type Crawler struct {
@@ -20,33 +20,26 @@ func NewCrawler(agent string, webRecordRepo repository.WebRecordRepository) Craw
 	}
 }
 
-func (c Crawler) Fetch(url string) (*string, error) {
-	request, err := http.NewRequest("GET", url, nil)
-
-	if err != nil {
-		return nil, err
-	}
-
-	request.Header.Set("User-Agent", c.agent)
-
-	res, err := http.DefaultClient.Do(request)
-
-	if err != nil {
-		return nil, fmt.Errorf("Error sending request: %v", err)
-	}
-	defer res.Body.Close()
-
-	body, err := io.ReadAll(res.Body)
-
-	if err != nil {
-		return nil, fmt.Errorf("Error reading body response: %v", err)
-	}
-
-	stringBody := string(body)
-
-	return &stringBody, nil
-}
-
 func (c Crawler) Handle(data []byte) error {
+	var payload model.SeedEvent
+
+	err := json.Unmarshal(data, &payload)
+
+	if err != nil {
+		return err
+	}
+
+	if err := payload.IsValid(); err != nil {
+		return err
+	}
+
+	url, err := payload.GetSeed()
+
+	if err != nil {
+		return err
+	}
+
+	robots.Parse(url)
+
 	return nil
 }
