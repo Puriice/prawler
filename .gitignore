@@ -6,3 +6,6 @@
 
 #Apple metadata file for directory
 .DS_Store
+
+#Initial Seeds
+seeds.json

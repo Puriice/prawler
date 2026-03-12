@@ -13,18 +13,21 @@ import (
 	"github.com/purrice/prawler/internal/config"
 	"github.com/purrice/prawler/internal/crawler"
 	"github.com/purrice/prawler/internal/repository"
+	"github.com/purrice/prawler/internal/robots"
 )
 
 func main() {
 	env.Init()
 	config := config.GetConfig()
-	amqpURL := env.Get("amqp_url", "amqp://localhost:5672")
+	amqpURL := env.Get("amqp_url", "amqp://guest:guest@localhost/")
 
 	rabbitMQ, err := messaging.NewRabbitMQ(amqpURL)
 
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	defer rabbitMQ.Shutdown()
 
 	broker, err := rabbitMQ.NewBroker(config.ExchangeName)
 
@@ -47,21 +50,21 @@ func main() {
 
 	defer db.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	exit := make(chan os.Signal, 1)
-	signal.Notify(exit, os.Interrupt, syscall.SIGTERM)
-
 	webRecordsRepository := repository.NewPostgresWebRecordRepository(db)
 
-	crawler := crawler.NewCrawler(config.UserAgent, webRecordsRepository)
+	robotsRepository := repository.NewPostgresRobotsRepository(db)
+	robotParser := robots.NewRobotParser(robotsRepository)
 
-	go func() {
-		if err := listener.Subscribe(ctx, crawler.Handle); err != nil {
-			log.Fatal(err)
-		}
-	}()
+	crawler := crawler.NewCrawler(robotParser, webRecordsRepository)
 
-	<-exit
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
-	cancel()
+	// var wg sync.WaitGroup
+
+	if err := listener.Subscribe(ctx, crawler.Handle); err != nil {
+		log.Println(err)
+	}
+
+	log.Println("Shuting down")
 }

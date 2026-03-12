@@ -2,6 +2,7 @@ package crawler
 
 import (
 	"encoding/json"
+	"log"
 
 	"github.com/purrice/prawler/internal/model"
 	"github.com/purrice/prawler/internal/repository"
@@ -9,13 +10,13 @@ import (
 )
 
 type Crawler struct {
-	agent         string
+	robots        robots.RobotParser
 	webRecordRepo repository.WebRecordRepository
 }
 
-func NewCrawler(agent string, webRecordRepo repository.WebRecordRepository) Crawler {
+func NewCrawler(robots robots.RobotParser, webRecordRepo repository.WebRecordRepository) Crawler {
 	return Crawler{
-		agent:         agent,
+		robots:        robots,
 		webRecordRepo: webRecordRepo,
 	}
 }
@@ -24,6 +25,8 @@ func (c Crawler) Handle(data []byte) error {
 	var payload model.SeedEvent
 
 	err := json.Unmarshal(data, &payload)
+
+	log.Println(payload)
 
 	if err != nil {
 		return err
@@ -39,7 +42,14 @@ func (c Crawler) Handle(data []byte) error {
 		return err
 	}
 
-	robots.Parse(url)
+	robots, err := c.robots.Parse(*url)
+
+	if err != nil {
+		return err
+	}
+
+	log.Printf("%s/robots.txt:", url.Host)
+	log.Println(*robots.Raw)
 
 	return nil
 }

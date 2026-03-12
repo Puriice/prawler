@@ -4,10 +4,12 @@ import (
 	"net/url"
 	"slices"
 	"time"
+
+	"github.com/purrice/prawler/internal/enum/seeds"
 )
 
 var (
-	ValidSeedEvent = []string{"event.seeds"}
+	ValidSeedEvent = []string{seeds.SeedProduced}
 )
 
 type SeedEvent struct {
