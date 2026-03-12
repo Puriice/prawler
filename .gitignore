@@ -1,0 +1,8 @@
+#environment variable
+**/*.env
+
+#Contain files for playaround for testing to confirm something
+**/playground/
+
+#Apple metadata file for directory
+.DS_Store
