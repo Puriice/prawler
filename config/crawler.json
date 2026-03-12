@@ -1,0 +1,5 @@
+{
+	"exchange_name": "pcrawler.events",
+	"queue_name": "pcrawler.seeds",
+	"user_agent": "pcrawler/1.0"
+}
