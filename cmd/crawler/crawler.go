@@ -60,8 +60,6 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	// var wg sync.WaitGroup
-
 	if err := listener.Subscribe(ctx, crawler.Handle); err != nil {
 		log.Println(err)
 	}
