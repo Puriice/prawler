@@ -17,7 +17,7 @@ type Config struct {
 
 func Default() *Config {
 	return &Config{
-		UserAgent:         "pcrawler/1.0",
+		UserAgent:         "pcrawler/1.0 (+https://github.com/Puriice/pcrawler; Educational project; Contract: purinutt.amartayavis@g.swu.ac.th)",
 		ExchangeName:      "pcrawler.events",
 		QueueName:         "pcrawler.seeds",
 		CrawlingDelayInMS: 1000,
