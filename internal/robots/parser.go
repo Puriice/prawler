@@ -14,6 +14,8 @@ import (
 
 const (
 	RobotsPath = "/robots.txt"
+	kilobytes  = 1000
+	readLimit  = 512 * kilobytes
 )
 
 func fetchRobots(host string) (*string, error) {
@@ -31,7 +33,8 @@ func fetchRobots(host string) (*string, error) {
 
 	defer res.Body.Close()
 
-	body, err := io.ReadAll(res.Body)
+	reader := io.LimitReader(res.Body, readLimit)
+	body, err := io.ReadAll(reader)
 
 	if err != nil {
 		return nil, err
