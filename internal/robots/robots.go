@@ -1,11 +1,24 @@
 package robots
 
-import "github.com/purrice/prawler/internal/repository"
+import (
+	"time"
+
+	"github.com/purrice/prawler/internal/config"
+	"github.com/purrice/prawler/internal/repository"
+	"golang.org/x/time/rate"
+)
 
 type RobotParser struct {
-	repo repository.RobotsRepository
+	repo    repository.RobotsRepository
+	limiter *rate.Limiter
 }
 
 func NewRobotParser(repo repository.RobotsRepository) RobotParser {
-	return RobotParser{repo: repo}
+	delay := time.Duration(config.GetConfig().CrawlingDelayInMS) * time.Millisecond
+	limiter := rate.NewLimiter(rate.Every(delay), 1)
+
+	return RobotParser{
+		limiter: limiter,
+		repo:    repo,
+	}
 }

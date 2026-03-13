@@ -9,16 +9,18 @@ import (
 var config *Config
 
 type Config struct {
-	UserAgent    string `json:"user_agent"`
-	ExchangeName string `json:"exchange_name"`
-	QueueName    string `json:"queue_name"`
+	UserAgent         string `json:"user_agent"`
+	ExchangeName      string `json:"exchange_name"`
+	QueueName         string `json:"queue_name"`
+	CrawlingDelayInMS int    `json:"crawling_delay_ms"`
 }
 
 func Default() *Config {
 	return &Config{
-		UserAgent:    "pcrawler/1.0",
-		ExchangeName: "pcrawler.events",
-		QueueName:    "pcrawler.seeds",
+		UserAgent:         "pcrawler/1.0",
+		ExchangeName:      "pcrawler.events",
+		QueueName:         "pcrawler.seeds",
+		CrawlingDelayInMS: 1000,
 	}
 }
 

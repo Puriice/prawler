@@ -18,7 +18,9 @@ const (
 	readLimit  = 512 * kilobytes
 )
 
-func fetchRobots(host string) (*string, error) {
+func (r RobotParser) fetchRobots(host string) (*string, error) {
+	r.limiter.Wait(context.Background())
+
 	request, err := fetch.GetRequest(host + RobotsPath)
 
 	if err != nil {
@@ -69,7 +71,7 @@ func (r RobotParser) Parse(url url.URL) (*model.Robots, error) {
 	robots = new(model.Robots)
 	robots.Host = host
 
-	raw, err := fetchRobots(host)
+	raw, err := r.fetchRobots(host)
 
 	if err != nil || *raw == "" {
 		log.Printf("Failed to fetch %s/robots.txt", host)
