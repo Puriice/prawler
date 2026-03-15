@@ -18,3 +18,7 @@ type WebRecordRepository interface {
 type WebInfoRepository interface {
 	AddInfo(context context.Context) error
 }
+
+type BlacklistRepository interface {
+	Query(context context.Context) []string
+}
