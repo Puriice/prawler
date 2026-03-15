@@ -17,7 +17,7 @@ type Config struct {
 
 func Default() *Config {
 	return &Config{
-		UserAgent:         "pcrawler/1.0 (+https://github.com/Puriice/pcrawler; Educational project; Contract: purinutt.amartayavis@g.swu.ac.th)",
+		UserAgent:         "prawler/1.0 (+https://github.com/Puriice/prawler; Educational project; Contract: purinutt.amartayavis@g.swu.ac.th)",
 		ExchangeName:      "pcrawler.events",
 		QueueName:         "pcrawler.seeds",
 		CrawlingDelayInMS: 1000,
@@ -25,7 +25,7 @@ func Default() *Config {
 }
 
 func parseConfig() *Config {
-	configPath := flag.String("config", "./config/crawler.json", "path to config file")
+	configPath := flag.String("config", "./config.json", "path to config file")
 	flag.Parse()
 
 	content, err := os.ReadFile(*configPath)
