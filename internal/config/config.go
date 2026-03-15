@@ -34,15 +34,15 @@ func parseConfig() *Config {
 		return Default()
 	}
 
-	var config Config
+	var config = Default()
 
-	err = json.Unmarshal(content, &config)
+	err = json.Unmarshal(content, config)
 
 	if err != nil {
 		return Default()
 	}
 
-	return &config
+	return config
 }
 
 func GetConfig() *Config {
