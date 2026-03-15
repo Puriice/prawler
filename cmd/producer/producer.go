@@ -9,11 +9,10 @@ import (
 	"github.com/purrice/prawler/internal/config"
 	SeedEvent "github.com/purrice/prawler/internal/enum/seeds"
 	"github.com/purrice/prawler/internal/model"
-	"github.com/purrice/prawler/internal/seeds"
 )
 
 func main() {
-	seeds, err := seeds.LoadSeeds()
+	seeds, err := config.LoadSeeds()
 
 	if err != nil {
 		log.Fatal(err)

@@ -1,9 +1,9 @@
 package config
 
 import (
-	"encoding/json"
 	"flag"
-	"os"
+
+	"github.com/purrice/prawler/internal/file"
 )
 
 var config *Config
@@ -28,15 +28,9 @@ func parseConfig() *Config {
 	configPath := flag.String("config", "./config.json", "path to config file")
 	flag.Parse()
 
-	content, err := os.ReadFile(*configPath)
-
-	if err != nil {
-		return Default()
-	}
-
 	var config = Default()
 
-	err = json.Unmarshal(content, config)
+	err := file.LoadJson(*configPath, &config)
 
 	if err != nil {
 		return Default()

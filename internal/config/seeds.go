@@ -1,11 +1,10 @@
-package seeds
+package config
 
 import (
-	"encoding/json"
 	"errors"
 	"flag"
-	"log"
-	"os"
+
+	"github.com/purrice/prawler/internal/file"
 )
 
 var (
@@ -14,22 +13,11 @@ var (
 
 func LoadSeeds() ([]string, error) {
 	seedFile := flag.String("seed-file", "./seeds.json", "A path to a json file containing array of seeds for crawling")
-
 	flag.Parse()
-
-	content, err := os.ReadFile(*seedFile)
-
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	var seeds []string
 
-	err = json.Unmarshal(content, &seeds)
-
-	if err != nil {
-		log.Fatal(err)
-	}
+	file.LoadJson(*seedFile, &seeds)
 
 	if len(seeds) == 0 {
 		return nil, ErrEmptySeed
