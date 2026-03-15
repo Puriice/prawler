@@ -1,6 +1,6 @@
 {
 	"exchange_name": "pcrawler.events",
 	"queue_name": "pcrawler.seeds",
-	"user_agent": "pcrawler/1.0 (+https://github.com/Puriice/pcrawler; Educational project; Contract: purinutt.amartayavis@g.swu.ac.th)",
+	"user_agent": "pcrawler/1.0 (+https://github.com/Puriice/prawler; Educational project; Contract: purinutt.amartayavis@g.swu.ac.th)",
 	"crawling_delay_ms": 1000
 }
