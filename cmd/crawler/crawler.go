@@ -18,7 +18,7 @@ import (
 
 func main() {
 	env.Init()
-	config := config.GetConfig()
+	cfg := config.GetConfig()
 	amqpURL := env.Get("amqp_url", "amqp://guest:guest@localhost/")
 
 	rabbitMQ, err := messaging.NewRabbitMQ(amqpURL)
@@ -29,13 +29,13 @@ func main() {
 
 	defer rabbitMQ.Shutdown()
 
-	broker, err := rabbitMQ.NewBroker(config.ExchangeName)
+	broker, err := rabbitMQ.NewBroker(cfg.ExchangeName)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	listenerConfig := messaging.NewRabbitListenerConfig(config.QueueName, "pcrawler.seeds")
+	listenerConfig := messaging.NewRabbitListenerConfig(cfg.QueueName, "pcrawler.seeds")
 	listener, err := broker.NewListenerWithConfig(listenerConfig)
 
 	if err != nil {
@@ -55,7 +55,10 @@ func main() {
 	robotsRepository := repository.NewPostgresRobotsRepository(db)
 	robotParser := robots.NewRobotParser(robotsRepository)
 
-	crawler := crawler.NewCrawler(robotParser, webRecordsRepository)
+	blacklistsRepository := repository.NewPostgresBlacklistRepository(db)
+	blacklists := config.NewBlacklist(blacklistsRepository)
+
+	crawler := crawler.NewCrawler(robotParser, webRecordsRepository, blacklists)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

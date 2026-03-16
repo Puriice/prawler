@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 
+	"github.com/purrice/prawler/internal/config"
 	"github.com/purrice/prawler/internal/model"
 	"github.com/purrice/prawler/internal/repository"
 	"github.com/purrice/prawler/internal/robots"
@@ -12,12 +13,14 @@ import (
 type Crawler struct {
 	robots        robots.RobotParser
 	webRecordRepo repository.WebRecordRepository
+	blacklist     *config.Blacklists
 }
 
-func NewCrawler(robots robots.RobotParser, webRecordRepo repository.WebRecordRepository) Crawler {
+func NewCrawler(robots robots.RobotParser, webRecordRepo repository.WebRecordRepository, blacklists *config.Blacklists) Crawler {
 	return Crawler{
 		robots:        robots,
 		webRecordRepo: webRecordRepo,
+		blacklist:     blacklists,
 	}
 }
 
