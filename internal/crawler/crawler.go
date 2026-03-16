@@ -36,14 +36,15 @@ func (c Crawler) handleProduceEvent(payload model.EventPayload) error {
 		return err
 	}
 
-	robots, err := c.robots.Parse(*url)
+	rbs, err := c.robots.Parse(*url)
 
 	if err != nil {
 		return err
 	}
 
 	log.Printf("%s/robots.txt:", url.Host)
-	log.Println(*robots.Raw)
+	// log.Println(*robots.Raw)
+	robots.Println(*rbs)
 
 	return nil
 }
@@ -57,8 +58,6 @@ func (c Crawler) Handle(data []byte) error {
 	var payload model.HostEvent
 
 	err := json.Unmarshal(data, &payload)
-
-	log.Println(payload)
 
 	if err != nil {
 		return err
