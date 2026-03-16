@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/purrice/prawler/internal/config"
+	"github.com/purrice/prawler/internal/enum/hosts"
 	"github.com/purrice/prawler/internal/model"
 	"github.com/purrice/prawler/internal/repository"
 	"github.com/purrice/prawler/internal/robots"
@@ -16,7 +17,11 @@ type Crawler struct {
 	blacklist     *config.Blacklists
 }
 
-func NewCrawler(robots robots.RobotParser, webRecordRepo repository.WebRecordRepository, blacklists *config.Blacklists) Crawler {
+func NewCrawler(
+	robots robots.RobotParser,
+	webRecordRepo repository.WebRecordRepository,
+	blacklists *config.Blacklists,
+) Crawler {
 	return Crawler{
 		robots:        robots,
 		webRecordRepo: webRecordRepo,
@@ -24,22 +29,8 @@ func NewCrawler(robots robots.RobotParser, webRecordRepo repository.WebRecordRep
 	}
 }
 
-func (c Crawler) Handle(data []byte) error {
-	var payload model.SeedEvent
-
-	err := json.Unmarshal(data, &payload)
-
-	log.Println(payload)
-
-	if err != nil {
-		return err
-	}
-
-	if err := payload.IsValid(); err != nil {
-		return err
-	}
-
-	url, err := payload.GetSeed()
+func (c Crawler) handleProduceEvent(payload model.EventPayload) error {
+	url, err := payload.GetHost()
 
 	if err != nil {
 		return err
@@ -54,5 +45,35 @@ func (c Crawler) Handle(data []byte) error {
 	log.Printf("%s/robots.txt:", url.Host)
 	log.Println(*robots.Raw)
 
+	return nil
+}
+
+func (c Crawler) handleBlacklistEvent(payload model.EventPayload) error {
+	c.blacklist.Add(*payload.Host)
+	return nil
+}
+
+func (c Crawler) Handle(data []byte) error {
+	var payload model.HostEvent
+
+	err := json.Unmarshal(data, &payload)
+
+	log.Println(payload)
+
+	if err != nil {
+		return err
+	}
+
+	if err := payload.IsValid(); err != nil {
+		return err
+	}
+
+	switch *payload.EventType {
+	case hosts.HostProduced:
+		return c.handleProduceEvent(*payload.Payload)
+	case hosts.HostBlacklist:
+		return c.handleBlacklistEvent(*payload.Payload)
+
+	}
 	return nil
 }

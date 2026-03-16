@@ -7,7 +7,7 @@ import (
 	"github.com/puriice/golibs/pkg/env"
 	"github.com/puriice/golibs/pkg/messaging"
 	"github.com/purrice/prawler/internal/config"
-	SeedEvent "github.com/purrice/prawler/internal/enum/seeds"
+	"github.com/purrice/prawler/internal/enum/hosts"
 	"github.com/purrice/prawler/internal/model"
 )
 
@@ -36,14 +36,16 @@ func main() {
 		log.Fatal(err)
 	}
 
-	eventType := SeedEvent.SeedProduced
+	eventType := hosts.HostProduced
 
 	for _, seed := range seeds {
 		now := time.Now()
-		event := model.SeedEvent{
+		event := model.HostEvent{
 			EventType: &eventType,
-			Seed:      &seed,
-			Timestamp: &now,
+			Payload: &model.EventPayload{
+				Host:      &seed,
+				Timestamp: &now,
+			},
 		}
 		err := broker.Publish("pcrawler.seeds", event)
 

@@ -19,7 +19,7 @@ func Default() *Config {
 	return &Config{
 		UserAgent:         "prawler/1.0 (+https://github.com/Puriice/prawler; Educational project; Contract: purinutt.amartayavis@g.swu.ac.th)",
 		ExchangeName:      "pcrawler.events",
-		QueueName:         "pcrawler.seeds",
+		QueueName:         "pcrawler.hosts",
 		CrawlingDelayInMS: 1000,
 	}
 }

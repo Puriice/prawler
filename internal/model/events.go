@@ -5,26 +5,21 @@ import (
 	"slices"
 	"time"
 
-	"github.com/purrice/prawler/internal/enum/seeds"
+	"github.com/purrice/prawler/internal/enum/hosts"
 )
 
 var (
-	ValidSeedEvent = []string{seeds.SeedProduced}
+	ValidSeedEvent = []string{hosts.HostProduced, hosts.HostBlacklist}
 )
 
-type SeedEvent struct {
-	EventType *string    `json:"event_type,omitempty"`
-	Seed      *string    `json:"seed,omitempty"`
-	Timestamp *time.Time `json:"timestamp,omitempty"`
+type HostEvent struct {
+	EventType *string       `json:"event_type,omitempty"`
+	Payload   *EventPayload `json:"payload,omitempty"`
 }
 
-func (s SeedEvent) IsValid() error {
-	if s.EventType == nil || s.Seed == nil || s.Timestamp == nil {
+func (s HostEvent) IsValid() error {
+	if s.EventType == nil {
 		return ErrMissingField
-	}
-
-	if *s.Seed == "" {
-		return ErrInvalidSeed
 	}
 
 	if !slices.Contains(ValidSeedEvent, *s.EventType) {
@@ -34,8 +29,25 @@ func (s SeedEvent) IsValid() error {
 	return nil
 }
 
-func (s SeedEvent) GetSeed() (*url.URL, error) {
-	url, err := url.Parse(*s.Seed)
+type EventPayload struct {
+	Host      *string    `json:"host,omitempty"`
+	Timestamp *time.Time `json:"timestamp,omitempty"`
+}
+
+func (s EventPayload) IsValid() error {
+	if s.Host == nil || s.Timestamp == nil {
+		return ErrMissingField
+	}
+
+	if *s.Host == "" {
+		return ErrInvalidSeed
+	}
+
+	return nil
+}
+
+func (s EventPayload) GetHost() (*url.URL, error) {
+	url, err := url.Parse(*s.Host)
 
 	if err != nil {
 		return nil, ErrInvalidSeed
