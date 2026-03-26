@@ -30,7 +30,7 @@ func main() {
 
 	defer rabbitMQ.Shutdown()
 
-	broker, err := rabbitMQ.NewBroker(config.ExchangeName)
+	broker, err := rabbitMQ.NewBroker(config.ExchangeName.Hosts)
 
 	if err != nil {
 		log.Fatal(err)
@@ -47,7 +47,7 @@ func main() {
 				Timestamp: &now,
 			},
 		}
-		err := broker.Publish("pcrawler.seeds", event)
+		err := broker.Publish("prawler.seeds", event)
 
 		if err != nil {
 			log.Println(err)

@@ -83,3 +83,8 @@ func (b *Blacklists) Remove(url string) {
 
 	delete(b.sets, url)
 }
+
+func (b *Blacklists) Handle(data []byte) error {
+
+	return nil
+}

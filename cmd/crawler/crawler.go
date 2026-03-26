@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/google/uuid"
 	"github.com/puriice/golibs/pkg/db"
 	"github.com/puriice/golibs/pkg/env"
 	"github.com/puriice/golibs/pkg/messaging"
@@ -17,6 +18,10 @@ import (
 )
 
 func main() {
+	crawlerUUID := uuid.New()
+
+	log.Printf("Crawler UUID: %s\n", crawlerUUID.String())
+
 	env.Init()
 	cfg := config.GetConfig()
 	amqpURL := env.Get("amqp_url", "amqp://guest:guest@localhost/")
@@ -29,18 +34,29 @@ func main() {
 
 	defer rabbitMQ.Shutdown()
 
-	broker, err := rabbitMQ.NewBroker(cfg.ExchangeName)
+	hostBroker, err := rabbitMQ.NewBroker(cfg.ExchangeName.Hosts)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	listenerConfig := messaging.NewRabbitListenerConfig(cfg.QueueName, "pcrawler.seeds")
-	listener, err := broker.NewListenerWithConfig(listenerConfig)
+	blacklistBroker, err := rabbitMQ.NewBroadcastBroker(cfg.ExchangeName.Blacklists)
 
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	hostListenerConfig := messaging.NewRabbitListenerConfig(cfg.QueueName, "prawler.seeds")
+	hostListener, err := hostBroker.NewListenerWithConfig(hostListenerConfig)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	blacklistListenerConfig := messaging.NewRabbitListenerConfig(crawlerUUID.String())
+	blacklistListenerConfig.Durable = true
+	blacklistListenerConfig.AutoDelete = true
+	blacklistListener, err := blacklistBroker.NewListenerWithConfig(blacklistListenerConfig)
 
 	db, err := db.NewDatabase()
 
@@ -63,7 +79,15 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	if err := listener.Subscribe(ctx, crawler.Handle); err != nil {
+	go func() {
+		log.Println("Start listening to blacklist events.")
+		if err := blacklistListener.Subscribe(ctx, blacklists.Handle); err != nil {
+			log.Println(err)
+		}
+	}()
+
+	log.Println("Start listening to hosts producing events.")
+	if err := hostListener.Subscribe(ctx, crawler.Handle); err != nil {
 		log.Println(err)
 	}
 

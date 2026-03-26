@@ -1,6 +1,9 @@
 {
-	"exchange_name": "pcrawler.events",
-	"queue_name": "pcrawler.hosts",
-	"user_agent": "pcrawler/1.0 (+https://github.com/Puriice/prawler; Educational project; Contract: purinutt.amartayavis@g.swu.ac.th)",
+	"exchange_name": {
+		"hosts": "prawler.hosts",
+		"blacklists": "prawler.blacklists"
+	},
+	"queue_name": "prawler.hosts",
+	"user_agent": "prawler/1.0 (+https://github.com/Puriice/prawler; Educational project; Contract: purinutt.amartayavis@g.swu.ac.th)",
 	"crawling_delay_ms": 1000
 }
