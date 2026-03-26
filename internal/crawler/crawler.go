@@ -49,11 +49,6 @@ func (c Crawler) handleProduceEvent(payload model.EventPayload) error {
 	return nil
 }
 
-func (c Crawler) handleBlacklistEvent(payload model.EventPayload) error {
-	c.blacklist.Add(*payload.Host)
-	return nil
-}
-
 func (c Crawler) Handle(data []byte) error {
 	var payload model.HostEvent
 
@@ -70,8 +65,6 @@ func (c Crawler) Handle(data []byte) error {
 	switch *payload.EventType {
 	case hosts.HostProduced:
 		return c.handleProduceEvent(*payload.Payload)
-	case hosts.HostBlacklist:
-		return c.handleBlacklistEvent(*payload.Payload)
 
 	}
 	return nil

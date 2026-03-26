@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	ValidSeedEvent = []string{hosts.HostProduced, hosts.HostBlacklist}
+	ValidSeedEvent = []string{hosts.HostProduced, hosts.HostBlacklistAdd}
 )
 
 type HostEvent struct {

@@ -2,10 +2,13 @@ package config
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"sync"
 
+	"github.com/purrice/prawler/internal/enum/hosts"
 	"github.com/purrice/prawler/internal/file"
+	"github.com/purrice/prawler/internal/model"
 	"github.com/purrice/prawler/internal/repository"
 )
 
@@ -85,6 +88,23 @@ func (b *Blacklists) Remove(url string) {
 }
 
 func (b *Blacklists) Handle(data []byte) error {
+	var payload model.HostEvent
 
+	err := json.Unmarshal(data, &payload)
+
+	if err != nil {
+		return err
+	}
+
+	if err := payload.IsValid(); err != nil {
+		return err
+	}
+
+	switch *payload.EventType {
+	case hosts.HostBlacklistAdd:
+		b.Add(*payload.Payload.Host)
+	case hosts.HostBlacklistRemove:
+		b.Remove(*payload.Payload.Host)
+	}
 	return nil
 }
