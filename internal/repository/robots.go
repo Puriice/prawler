@@ -2,10 +2,10 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/puriice/golibs/pkg/pgutils"
-	"github.com/purrice/prawler/internal/model"
 )
 
 var ()
@@ -19,7 +19,7 @@ func NewPostgresRobotsRepository(db *pgxpool.Pool) PostgresRobotsRepository {
 }
 
 func (r PostgresRobotsRepository) AddRobots(context context.Context, host string, raw string) error {
-	cmdTag, err := r.db.Exec(context, "INSERT INTO robots (host, raw_text) VALUES ($1, $2);", host, raw)
+	cmdTag, err := r.db.Exec(context, "INSERT INTO robots (host, raw_text) VALUES ($1, $2) ON DUPLICATE KEY UPDATE raw_text = $2, updated_at = CURRENT_TIMESTAMP;", host, raw)
 
 	if err != nil {
 		return err
@@ -32,17 +32,15 @@ func (r PostgresRobotsRepository) AddRobots(context context.Context, host string
 	return nil
 }
 
-func (r PostgresRobotsRepository) GetRobots(context context.Context, host string) (*model.Robots, error) {
+func (r PostgresRobotsRepository) GetRobots(context context.Context, host string) (*string, *time.Time, error) {
 	var raw string
+	var timestamp time.Time
 
-	err := r.db.QueryRow(context, "SELECT raw_text FROM robots WHERE host = $1", host).Scan(&raw)
+	err := r.db.QueryRow(context, "SELECT raw_text, updated_at FROM robots WHERE host = $1", host).Scan(&raw, &timestamp)
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return &model.Robots{
-		Host: host,
-		Raw:  &raw,
-	}, nil
+	return &raw, &timestamp, nil
 }

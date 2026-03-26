@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/purrice/prawler/internal/fetch"
-	"github.com/purrice/prawler/internal/model"
 	"github.com/purrice/prawler/internal/types"
 )
 
@@ -48,14 +48,13 @@ func (r RobotParser) fetchRobots(host string) (*string, error) {
 	return &stringBody, nil
 }
 
-func parse(raw string) (model.Rules, []string) {
+func parse(raw string) (Rules, []string) {
 	lines := strings.Split(raw, "\n")
-	log.Println(lines)
 
-	rules := make(map[string]*model.Rule, 5)
+	rules := make(map[string]*Rule, 5)
 	sitemap := []string{}
 
-	currentRule := &model.Rule{
+	currentRule := &Rule{
 		Allow:    []string{},
 		Disallow: []string{},
 	}
@@ -79,7 +78,7 @@ func parse(raw string) (model.Rules, []string) {
 			rule, ok := rules[value]
 
 			if !ok {
-				rule = &model.Rule{
+				rule = &Rule{
 					Allow:    []string{},
 					Disallow: []string{},
 				}
@@ -102,7 +101,7 @@ func parse(raw string) (model.Rules, []string) {
 	return rules, sitemap
 }
 
-func (r RobotParser) Parse(url url.URL) (*model.Robots, error) {
+func (r RobotParser) Parse(url url.URL) (*Robots, error) {
 	url.User = nil
 	url.Path = ""
 	url.Fragment = ""
@@ -116,11 +115,12 @@ func (r RobotParser) Parse(url url.URL) (*model.Robots, error) {
 
 	log.Printf("Checking %s/robots.txt cached in database.", host)
 
-	robots, err := r.repo.GetRobots(context.Background(), host)
+	raw, updated_at, err := r.repo.GetRobots(context.Background(), host)
 
-	if err != nil {
+	var robots Robots
+
+	if err != nil || (updated_at != nil && time.Now().After(updated_at.AddDate(0, 0, 1))) {
 		log.Printf("%s/robots.txt not founded in the database. Try fetching the new one.", host)
-		robots = new(model.Robots)
 		robots.Host = host
 
 		raw, err := r.fetchRobots(host)
@@ -143,6 +143,9 @@ func (r RobotParser) Parse(url url.URL) (*model.Robots, error) {
 
 			log.Printf("Saved %s/robots.txt", host)
 		}()
+	} else {
+		robots.Host = host
+		robots.Raw = raw
 	}
 
 	log.Printf("Parsing %s/robots.txt", host)
@@ -152,5 +155,5 @@ func (r RobotParser) Parse(url url.URL) (*model.Robots, error) {
 	robots.Rules = rules
 	robots.Sitemap = sitemap
 
-	return robots, nil
+	return &robots, nil
 }

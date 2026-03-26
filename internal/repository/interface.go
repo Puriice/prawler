@@ -2,13 +2,12 @@ package repository
 
 import (
 	"context"
-
-	"github.com/purrice/prawler/internal/model"
+	"time"
 )
 
 type RobotsRepository interface {
 	AddRobots(context context.Context, host string, raw string) error
-	GetRobots(context context.Context, host string) (*model.Robots, error)
+	GetRobots(context context.Context, host string) (*string, *time.Time, error)
 }
 
 type WebRecordRepository interface {

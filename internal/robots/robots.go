@@ -8,6 +8,19 @@ import (
 	"golang.org/x/time/rate"
 )
 
+type Rule struct {
+	Allow    []string
+	Disallow []string
+}
+
+type Rules map[string]*Rule
+type Robots struct {
+	Host    string
+	Raw     *string
+	Rules   Rules
+	Sitemap []string
+}
+
 type RobotParser struct {
 	repo    repository.RobotsRepository
 	limiter *rate.Limiter

@@ -2,11 +2,9 @@ package robots
 
 import (
 	"fmt"
-
-	"github.com/purrice/prawler/internal/model"
 )
 
-func Println(robots model.Robots) {
+func Println(robots Robots) {
 	for agent, rule := range robots.Rules {
 		fmt.Printf("User-Agent: %s\n", agent)
 		for _, v := range rule.Allow {
