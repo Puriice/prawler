@@ -2,55 +2,51 @@ package model
 
 import (
 	"net/url"
-	"slices"
 	"time"
 
 	"github.com/purrice/prawler/internal/enum/hosts"
+	"github.com/purrice/prawler/internal/types"
 )
 
 var (
 	ValidSeedEvent = []string{hosts.HostProduced, hosts.HostBlacklistAdd}
 )
 
-type HostEvent struct {
-	EventType *string       `json:"event_type,omitempty"`
-	Payload   *EventPayload `json:"payload,omitempty"`
+type Event struct {
+	EventType *string `json:"event_type,omitempty"`
+	Payload   any     `json:"payload,omitempty"`
 }
 
-func (s HostEvent) IsValid() error {
+func (s Event) IsValid() error {
 	if s.EventType == nil {
-		return ErrMissingField
-	}
-
-	if !slices.Contains(ValidSeedEvent, *s.EventType) {
-		return ErrInvalidEventType
+		return types.ErrMissingField
 	}
 
 	return nil
 }
 
-type EventPayload struct {
+type HostPayload struct {
 	Host      *string    `json:"host,omitempty"`
 	Timestamp *time.Time `json:"timestamp,omitempty"`
 }
 
-func (s EventPayload) IsValid() error {
+func (s HostPayload) IsValid() error {
 	if s.Host == nil || s.Timestamp == nil {
-		return ErrMissingField
+		return types.ErrMissingField
 	}
 
 	if *s.Host == "" {
-		return ErrInvalidSeed
+		return types.ErrInvalidSeed
 	}
 
 	return nil
 }
 
-func (s EventPayload) GetHost() (*url.URL, error) {
+func (s HostPayload) GetHost() (*url.URL, error) {
 	url, err := url.Parse(*s.Host)
 
 	if err != nil {
-		return nil, ErrInvalidSeed
+		return nil, types.ErrInvalidSeed
 	}
 
 	return url, nil

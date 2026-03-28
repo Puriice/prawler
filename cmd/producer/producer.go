@@ -40,9 +40,9 @@ func main() {
 
 	for _, seed := range seeds {
 		now := time.Now()
-		event := model.HostEvent{
+		event := model.Event{
 			EventType: &eventType,
-			Payload: &model.EventPayload{
+			Payload: &model.HostPayload{
 				Host:      &seed,
 				Timestamp: &now,
 			},

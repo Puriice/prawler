@@ -10,6 +10,7 @@ import (
 	"github.com/purrice/prawler/internal/file"
 	"github.com/purrice/prawler/internal/model"
 	"github.com/purrice/prawler/internal/repository"
+	"github.com/purrice/prawler/internal/types"
 )
 
 type Blacklists struct {
@@ -88,23 +89,28 @@ func (b *Blacklists) Remove(url string) {
 }
 
 func (b *Blacklists) Handle(data []byte) error {
-	var payload model.HostEvent
+	var event model.Event
 
-	err := json.Unmarshal(data, &payload)
+	err := json.Unmarshal(data, &event)
 
 	if err != nil {
 		return err
 	}
 
-	if err := payload.IsValid(); err != nil {
+	if err := event.IsValid(); err != nil {
 		return err
 	}
+	payload, ok := event.Payload.(*model.HostPayload)
 
-	switch *payload.EventType {
+	if !ok {
+		return types.ErrInvalidPaylod
+	}
+
+	switch *event.EventType {
 	case hosts.HostBlacklistAdd:
-		b.Add(*payload.Payload.Host)
+		b.Add(*payload.Host)
 	case hosts.HostBlacklistRemove:
-		b.Remove(*payload.Payload.Host)
+		b.Remove(*payload.Host)
 	}
 	return nil
 }

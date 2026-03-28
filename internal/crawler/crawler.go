@@ -9,6 +9,7 @@ import (
 	"github.com/purrice/prawler/internal/model"
 	"github.com/purrice/prawler/internal/repository"
 	"github.com/purrice/prawler/internal/robots"
+	"github.com/purrice/prawler/internal/types"
 )
 
 type Crawler struct {
@@ -29,7 +30,7 @@ func NewCrawler(
 	}
 }
 
-func (c Crawler) handleProduceEvent(payload model.EventPayload) error {
+func (c Crawler) handleProduceEvent(payload model.HostPayload) error {
 	url, err := payload.GetHost()
 
 	if err != nil {
@@ -50,21 +51,27 @@ func (c Crawler) handleProduceEvent(payload model.EventPayload) error {
 }
 
 func (c Crawler) Handle(data []byte) error {
-	var payload model.HostEvent
+	var event model.Event
 
-	err := json.Unmarshal(data, &payload)
+	err := json.Unmarshal(data, &event)
 
 	if err != nil {
 		return err
 	}
 
-	if err := payload.IsValid(); err != nil {
+	if err := event.IsValid(); err != nil {
 		return err
 	}
 
-	switch *payload.EventType {
+	payload, ok := event.Payload.(*model.HostPayload)
+
+	if !ok {
+		return types.ErrInvalidPaylod
+	}
+
+	switch *event.EventType {
 	case hosts.HostProduced:
-		return c.handleProduceEvent(*payload.Payload)
+		return c.handleProduceEvent(*payload)
 
 	}
 	return nil
