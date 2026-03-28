@@ -1,8 +1,20 @@
 package master
 
-import "encoding/json"
+import (
+	"encoding/json"
 
-func Handle(data []byte) error {
+	"github.com/purrice/prawler/internal/repository"
+)
+
+type MasterNode struct {
+	repo repository.MasterRepository
+}
+
+func NewMasterNode(repo repository.MasterRepository) MasterNode {
+	return MasterNode{repo: repo}
+}
+
+func (m MasterNode) Handle(data []byte) error {
 	var event Event
 
 	err := json.Unmarshal(data, &event)

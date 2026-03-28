@@ -21,3 +21,6 @@ type WebInfoRepository interface {
 type BlacklistRepository interface {
 	Query(context context.Context) []string
 }
+
+type MasterRepository interface {
+}

@@ -7,10 +7,12 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/puriice/golibs/pkg/db"
 	"github.com/puriice/golibs/pkg/env"
 	"github.com/puriice/golibs/pkg/messaging"
 	"github.com/purrice/prawler/internal/config"
 	"github.com/purrice/prawler/internal/master"
+	"github.com/purrice/prawler/internal/repository"
 )
 
 func main() {
@@ -39,8 +41,17 @@ func main() {
 		log.Fatal(err)
 	}
 
+	db, err := db.NewDatabase()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	repo := repository.NewPostgresMasterRepository(db)
+	master := master.NewMasterNode(repo)
 
 	log.Println("Start listening to slave producing events.")
 	if err := listener.Subscribe(ctx, master.Handle); err != nil {
