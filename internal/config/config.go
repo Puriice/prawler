@@ -11,6 +11,7 @@ var config *Config
 type ExchangeConfig struct {
 	Hosts      string `json:"hosts"`
 	Blacklists string `json:"blacklists"`
+	Master     string `json:"master"`
 }
 
 type Config struct {
@@ -26,6 +27,7 @@ func Default() *Config {
 		ExchangeName: ExchangeConfig{
 			Hosts:      "prawler.hosts",
 			Blacklists: "prawler.blacklists",
+			Master:     "prawler.master",
 		},
 		QueueName:         "pcrawler.hosts",
 		CrawlingDelayInMS: 1000,

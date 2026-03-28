@@ -1,7 +1,8 @@
 {
 	"exchange_name": {
 		"hosts": "prawler.hosts",
-		"blacklists": "prawler.blacklists"
+		"blacklists": "prawler.blacklists",
+		"master": "prawler.master"
 	},
 	"queue_name": "prawler.hosts",
 	"user_agent": "prawler/1.0 (+https://github.com/Puriice/prawler; Educational project; Contract: purinutt.amartayavis@g.swu.ac.th)",
