@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/purrice/prawler/internal/master/status"
 	"github.com/purrice/prawler/internal/types"
 )
 
@@ -14,8 +15,9 @@ type Event struct {
 }
 
 type Payload struct {
-	UUID      *string    `json:"uuid"`
-	Timestamp *time.Time `json:"timestamp"`
+	UUID      *string               `json:"uuid"`
+	Status    *status.CrawlerStatus `json:"status"`
+	Timestamp *time.Time            `json:"timestamp"`
 }
 
 func (e Event) IsValid() error {
@@ -27,7 +29,11 @@ func (e Event) IsValid() error {
 }
 
 func (p Payload) IsValid() error {
-	if p.UUID == nil || p.Timestamp == nil {
+	if p.UUID == nil || p.Status == nil || p.Timestamp == nil {
+		return types.ErrMissingField
+	}
+
+	if !slices.Contains(status.ValidCrawlerStatus, *p.Status) {
 		return types.ErrInvalidField
 	}
 

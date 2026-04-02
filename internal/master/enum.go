@@ -3,13 +3,9 @@ package master
 type EventType string
 
 const (
-	CrawlerSpawn      EventType = "prawler.master.spawn"
-	CrawlerHeartBeats EventType = "prawler.master.heartbeat"
-	CrawlerDie        EventType = "prawler.master.die"
+	StatusReport EventType = "prawler.master.status"
 )
 
 var ValidEventType = []EventType{
-	CrawlerSpawn,
-	CrawlerHeartBeats,
-	CrawlerDie,
+	StatusReport,
 }
