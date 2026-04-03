@@ -23,4 +23,5 @@ type BlacklistRepository interface {
 }
 
 type MasterRepository interface {
+	AddCrawler(context context.Context, uuid string, timestamp time.Time) error
 }

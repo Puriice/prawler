@@ -11,10 +11,10 @@ import (
 
 type Event struct {
 	Type    EventType `json:"event_type"`
-	Payload *Payload  `json:"payload"`
+	Payload any       `json:"payload"`
 }
 
-type Payload struct {
+type StatusPayload struct {
 	UUID      *string               `json:"uuid"`
 	Status    *status.CrawlerStatus `json:"status"`
 	Timestamp *time.Time            `json:"timestamp"`
@@ -25,10 +25,10 @@ func (e Event) IsValid() error {
 		return types.ErrInvalidEventType
 	}
 
-	return e.Payload.IsValid()
+	return nil
 }
 
-func (p Payload) IsValid() error {
+func (p StatusPayload) IsValid() error {
 	if p.UUID == nil || p.Status == nil || p.Timestamp == nil {
 		return types.ErrMissingField
 	}

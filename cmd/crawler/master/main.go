@@ -51,7 +51,7 @@ func main() {
 	defer stop()
 
 	repo := repository.NewPostgresMasterRepository(db)
-	master := master.NewMasterNode(repo)
+	master := master.NewMasterNode(repo, ctx)
 
 	log.Println("Start listening to slave producing events.")
 	if err := listener.Subscribe(ctx, master.Handle); err != nil {
