@@ -15,7 +15,7 @@ func GetRequest(url string) (*http.Request, error) {
 		return nil, err
 	}
 
-	request.Header.Set("User-Agent", config.UserAgent)
+	request.Header.Set("User-Agent", config.GetDisplayUserAgent())
 
 	return request, nil
 }
