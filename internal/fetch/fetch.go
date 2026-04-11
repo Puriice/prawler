@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 
 	"github.com/purrice/prawler/internal/config"
@@ -14,6 +15,7 @@ import (
 type Fetcher struct {
 	client   *http.Client
 	limiters map[string]*rate.Limiter
+	mu       *sync.RWMutex
 }
 
 func NewFecter(client *http.Client) Fetcher {
@@ -27,7 +29,9 @@ func NewFecter(client *http.Client) Fetcher {
 }
 
 func (f Fetcher) getLimiter(origin string) *rate.Limiter {
+	f.mu.RLock()
 	limiter, ok := f.limiters[origin]
+	f.mu.RUnlock()
 
 	if ok {
 		return limiter
@@ -36,7 +40,9 @@ func (f Fetcher) getLimiter(origin string) *rate.Limiter {
 	delay := time.Duration(config.GetConfig().CrawlingDelayInMS) * time.Millisecond
 	limiter = rate.NewLimiter(rate.Every(delay), 1)
 
+	f.mu.Lock()
 	f.limiters[origin] = limiter
+	f.mu.Unlock()
 
 	return limiter
 }
