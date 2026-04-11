@@ -2,7 +2,6 @@ package crawler
 
 import (
 	"encoding/json"
-	"log"
 
 	"github.com/purrice/prawler/internal/config"
 	"github.com/purrice/prawler/internal/enum/hosts"
@@ -13,17 +12,20 @@ import (
 )
 
 type Crawler struct {
+	agent         string
 	robots        robots.RobotParser
 	webRecordRepo repository.WebRecordRepository
 	blacklist     *config.Blacklists
 }
 
 func NewCrawler(
+	userAgent string,
 	robots robots.RobotParser,
 	webRecordRepo repository.WebRecordRepository,
 	blacklists *config.Blacklists,
 ) Crawler {
 	return Crawler{
+		agent:         userAgent,
 		robots:        robots,
 		webRecordRepo: webRecordRepo,
 		blacklist:     blacklists,
@@ -43,8 +45,9 @@ func (c Crawler) handleProduceEvent(payload model.HostPayload) error {
 		return err
 	}
 
-	log.Printf("%s/robots.txt:", url.Host)
-	// log.Println(*robots.Raw)
+	if !rbs.IsAllow(c.agent, url.String()) {
+		return nil
+	}
 
 	return nil
 }

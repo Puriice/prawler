@@ -77,7 +77,7 @@ func main() {
 	blacklistsRepository := repository.NewPostgresBlacklistRepository(db)
 	blacklists := config.NewBlacklist(blacklistsRepository)
 
-	crawler := crawler.NewCrawler(robotParser, webRecordsRepository, blacklists)
+	crawler := crawler.NewCrawler(cfg.UserAgent, robotParser, webRecordsRepository, blacklists)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
