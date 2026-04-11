@@ -45,7 +45,6 @@ func (c Crawler) handleProduceEvent(payload model.HostPayload) error {
 
 	log.Printf("%s/robots.txt:", url.Host)
 	// log.Println(*robots.Raw)
-	robots.Println(*rbs)
 
 	return nil
 }

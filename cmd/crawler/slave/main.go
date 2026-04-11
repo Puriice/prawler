@@ -13,6 +13,7 @@ import (
 	"github.com/puriice/golibs/pkg/messaging"
 	"github.com/purrice/prawler/internal/config"
 	"github.com/purrice/prawler/internal/crawler"
+	"github.com/purrice/prawler/internal/fetch"
 	"github.com/purrice/prawler/internal/repository"
 	"github.com/purrice/prawler/internal/robots"
 )
@@ -68,8 +69,10 @@ func main() {
 
 	webRecordsRepository := repository.NewPostgresWebRecordRepository(db)
 
+	fetcher := fetch.NewFecter(nil)
+
 	robotsRepository := repository.NewPostgresRobotsRepository(db)
-	robotParser := robots.NewRobotParser(robotsRepository)
+	robotParser := robots.NewRobotParser(robotsRepository, fetcher)
 
 	blacklistsRepository := repository.NewPostgresBlacklistRepository(db)
 	blacklists := config.NewBlacklist(blacklistsRepository)
