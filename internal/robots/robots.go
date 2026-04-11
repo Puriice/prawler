@@ -15,10 +15,10 @@ type Robots struct {
 
 type RobotParser struct {
 	repo    repository.RobotsRepository
-	fetcher fetch.Fetcher
+	fetcher *fetch.Fetcher
 }
 
-func NewRobotParser(repo repository.RobotsRepository, fetcher fetch.Fetcher) RobotParser {
+func NewRobotParser(repo repository.RobotsRepository, fetcher *fetch.Fetcher) RobotParser {
 	return RobotParser{
 		repo:    repo,
 		fetcher: fetcher,

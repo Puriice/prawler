@@ -72,12 +72,12 @@ func main() {
 	fetcher := fetch.NewFecter(nil)
 
 	robotsRepository := repository.NewPostgresRobotsRepository(db)
-	robotParser := robots.NewRobotParser(robotsRepository, fetcher)
+	robotParser := robots.NewRobotParser(robotsRepository, &fetcher)
 
 	blacklistsRepository := repository.NewPostgresBlacklistRepository(db)
 	blacklists := config.NewBlacklist(blacklistsRepository)
 
-	crawler := crawler.NewCrawler(cfg.UserAgent, robotParser, webRecordsRepository, blacklists)
+	crawler := crawler.NewCrawler(cfg.UserAgent, robotParser, webRecordsRepository, blacklists, &fetcher)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

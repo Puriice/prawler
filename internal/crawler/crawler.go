@@ -5,6 +5,7 @@ import (
 
 	"github.com/purrice/prawler/internal/config"
 	"github.com/purrice/prawler/internal/enum/hosts"
+	"github.com/purrice/prawler/internal/fetch"
 	"github.com/purrice/prawler/internal/model"
 	"github.com/purrice/prawler/internal/origin"
 	"github.com/purrice/prawler/internal/repository"
@@ -17,6 +18,7 @@ type Crawler struct {
 	robots        robots.RobotParser
 	webRecordRepo repository.WebRecordRepository
 	blacklist     *config.Blacklists
+	fetcher       *fetch.Fetcher
 }
 
 func NewCrawler(
@@ -24,12 +26,14 @@ func NewCrawler(
 	robots robots.RobotParser,
 	webRecordRepo repository.WebRecordRepository,
 	blacklists *config.Blacklists,
+	fetcher *fetch.Fetcher,
 ) Crawler {
 	return Crawler{
 		agent:         userAgent,
 		robots:        robots,
 		webRecordRepo: webRecordRepo,
 		blacklist:     blacklists,
+		fetcher:       fetcher,
 	}
 }
 
