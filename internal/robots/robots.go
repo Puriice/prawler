@@ -16,6 +16,7 @@ type Robots struct {
 type RobotParser struct {
 	repo    repository.RobotsRepository
 	fetcher *fetch.Fetcher
+	cache   map[string]Robots
 }
 
 func NewRobotParser(repo repository.RobotsRepository, fetcher *fetch.Fetcher) RobotParser {

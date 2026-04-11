@@ -41,49 +41,58 @@ func (r RobotParser) fetchRobots(url url.URL) (*string, error) {
 }
 
 func (r RobotParser) Parse(url url.URL) (*Robots, error) {
-	host := origin.GetOrigin(url)
-	hostString := host.String()
+	origin := origin.GetOrigin(url)
+	originStr := origin.String()
 
-	if host.String() == "" {
+	if origin.String() == "" {
 		return nil, types.ErrUnproccessableInput
 	}
-
-	log.Printf("Checking %s/robots.txt cached in database.", hostString)
-
-	raw, updated_at, err := r.repo.GetRobots(context.Background(), hostString)
+	log.Printf("Checking if %s/robots.txt cached in local.", originStr)
 
 	var robots Robots
 
-	if err != nil || (updated_at != nil && time.Now().After(updated_at.AddDate(0, 0, 1))) {
-		log.Printf("%s/robots.txt not founded in the database. Try fetching the new one.", hostString)
-		robots.Host = host
+	robots, ok := r.cache[originStr]
 
-		raw, err := r.fetchRobots(host)
+	if ok {
+		return &robots, nil
+	}
+
+	log.Printf("Checking if %s/robots.txt cached in database.", originStr)
+
+	raw, updated_at, err := r.repo.GetRobots(context.Background(), originStr)
+
+	if err != nil || (updated_at != nil && time.Now().After(updated_at.AddDate(0, 0, 1))) {
+		log.Printf("%s/robots.txt not founded in the database. Try fetching the new one.", originStr)
+		robots.Host = origin
+
+		raw, err := r.fetchRobots(origin)
 
 		if err != nil || *raw == "" {
-			log.Printf("Failed to fetch %s/robots.txt", hostString)
+			log.Printf("Failed to fetch %s/robots.txt", originStr)
 			return nil, ErrFailedToFetchRobots
 		}
 
 		robots.Raw = raw
-		log.Printf("Saving %s/robots.txt", hostString)
+		log.Printf("Saving %s/robots.txt", originStr)
 
 		go func() {
-			err := r.repo.AddRobots(context.Background(), hostString, *raw)
+			err := r.repo.AddRobots(context.Background(), originStr, *raw)
 
 			if err != nil {
-				log.Printf("Failed to saved %s/robots.txt. %v", hostString, err)
+				log.Printf("Failed to saved %s/robots.txt. %v", originStr, err)
 				return
 			}
 
-			log.Printf("Saved %s/robots.txt", hostString)
+			log.Printf("Saved %s/robots.txt", originStr)
 		}()
 	} else {
-		robots.Host = host
+		robots.Host = origin
 		robots.Raw = raw
 	}
 
 	robots.Sitemap = grobotstxt.Sitemaps(*robots.Raw)
+
+	r.cache[originStr] = robots
 
 	return &robots, nil
 }
