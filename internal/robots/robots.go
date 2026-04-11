@@ -2,15 +2,17 @@ package robots
 
 import (
 	"net/url"
+	"time"
 
 	"github.com/purrice/prawler/internal/fetch"
 	"github.com/purrice/prawler/internal/repository"
 )
 
 type Robots struct {
-	Host    url.URL
-	Raw     *string
-	Sitemap []string
+	Host      url.URL
+	Raw       *string
+	Sitemap   []string
+	Timestamp time.Time
 }
 
 type RobotParser struct {

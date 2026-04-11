@@ -48,51 +48,53 @@ func (r RobotParser) Parse(url url.URL) (*Robots, error) {
 		return nil, types.ErrUnproccessableInput
 	}
 	log.Printf("Checking if %s/robots.txt cached in local.", originStr)
-
-	var robots Robots
-
 	robots, ok := r.cache[originStr]
 
-	if ok {
+	if ok && time.Now().Before(robots.Timestamp.AddDate(0, 0, 1)) {
 		return &robots, nil
 	}
 
 	log.Printf("Checking if %s/robots.txt cached in database.", originStr)
-
 	raw, updated_at, err := r.repo.GetRobots(context.Background(), originStr)
 
-	if err != nil || (updated_at != nil && time.Now().After(updated_at.AddDate(0, 0, 1))) {
-		log.Printf("%s/robots.txt not founded in the database. Try fetching the new one.", originStr)
-		robots.Host = origin
-
-		raw, err := r.fetchRobots(origin)
-
-		if err != nil || *raw == "" {
-			log.Printf("Failed to fetch %s/robots.txt", originStr)
-			return nil, ErrFailedToFetchRobots
-		}
-
-		robots.Raw = raw
-		log.Printf("Saving %s/robots.txt", originStr)
-
-		go func() {
-			err := r.repo.AddRobots(context.Background(), originStr, *raw)
-
-			if err != nil {
-				log.Printf("Failed to saved %s/robots.txt. %v", originStr, err)
-				return
-			}
-
-			log.Printf("Saved %s/robots.txt", originStr)
-		}()
-	} else {
+	if err == nil && updated_at != nil && time.Now().Before(updated_at.AddDate(0, 0, 1)) {
 		robots.Host = origin
 		robots.Raw = raw
+		robots.Sitemap = grobotstxt.Sitemaps(*robots.Raw)
+		robots.Timestamp = time.Now()
+
+		r.cache[originStr] = robots
+
+		return &robots, nil
 	}
 
+	log.Printf("%s/robots.txt not founded in the database. Try fetching the new one.", originStr)
+	raw, err = r.fetchRobots(origin)
+
+	if err != nil || *raw == "" {
+		log.Printf("Failed to fetch %s/robots.txt", originStr)
+		return nil, ErrFailedToFetchRobots
+	}
+
+	go func() {
+		log.Printf("Saving %s/robots.txt", originStr)
+		err := r.repo.AddRobots(context.Background(), originStr, *raw)
+
+		if err != nil {
+			log.Printf("Failed to saved %s/robots.txt. %v", originStr, err)
+			return
+		}
+
+		log.Printf("Saved %s/robots.txt", originStr)
+	}()
+
+	robots.Host = origin
+	robots.Raw = raw
 	robots.Sitemap = grobotstxt.Sitemaps(*robots.Raw)
+	robots.Timestamp = time.Now()
 
 	r.cache[originStr] = robots
 
 	return &robots, nil
+
 }
