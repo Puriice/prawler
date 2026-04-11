@@ -3,11 +3,15 @@ package config
 import (
 	"flag"
 	"fmt"
+	"sync"
 
 	"github.com/purrice/prawler/internal/file"
 )
 
-var config *Config
+var (
+	config     *Config
+	configOnce sync.Once
+)
 
 type Contact struct {
 	Email string `json:"email"`
@@ -47,25 +51,21 @@ func Default() *Config {
 	}
 }
 
-func parseConfig() *Config {
+func initConfig() {
 	configPath := flag.String("config", "./config.json", "path to config file")
 	flag.Parse()
 
-	var config = Default()
+	config = Default()
 
 	err := file.LoadJson(*configPath, &config)
 
 	if err != nil {
-		return Default()
+		config = Default()
 	}
-
-	return config
 }
 
 func GetConfig() *Config {
-	if config == nil {
-		config = parseConfig()
-	}
+	configOnce.Do(initConfig)
 
 	return config
 }
