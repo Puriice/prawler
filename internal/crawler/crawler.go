@@ -6,6 +6,7 @@ import (
 	"github.com/purrice/prawler/internal/config"
 	"github.com/purrice/prawler/internal/enum/hosts"
 	"github.com/purrice/prawler/internal/model"
+	"github.com/purrice/prawler/internal/origin"
 	"github.com/purrice/prawler/internal/repository"
 	"github.com/purrice/prawler/internal/robots"
 	"github.com/purrice/prawler/internal/types"
@@ -39,6 +40,12 @@ func (c Crawler) handleProduceEvent(payload model.HostPayload) error {
 		return err
 	}
 
+	origin := origin.GetOrigin(*url)
+
+	if c.blacklist.Contains(origin.String()) {
+		return nil // the target is on blacklisted act as consumed
+	}
+
 	rbs, err := c.robots.Parse(*url)
 
 	if err != nil {
@@ -46,7 +53,7 @@ func (c Crawler) handleProduceEvent(payload model.HostPayload) error {
 	}
 
 	if !rbs.IsAllow(c.agent, url.String()) {
-		return nil
+		return nil // the target is not allow to crawl act as consumed
 	}
 
 	return nil
