@@ -2,11 +2,17 @@ package config
 
 import (
 	"flag"
+	"fmt"
 
 	"github.com/purrice/prawler/internal/file"
 )
 
 var config *Config
+
+type Contact struct {
+	Email string `json:"email"`
+	Git   string `json:"git"`
+}
 
 type ExchangeConfig struct {
 	Hosts      string `json:"hosts"`
@@ -15,6 +21,8 @@ type ExchangeConfig struct {
 }
 
 type Config struct {
+	Version           float32        `json:"version"`
+	Contact           Contact        `json:"contact"`
 	UserAgent         string         `json:"user_agent"`
 	ExchangeName      ExchangeConfig `json:"exchange_name"`
 	QueueName         string         `json:"queue_name"`
@@ -23,7 +31,12 @@ type Config struct {
 
 func Default() *Config {
 	return &Config{
-		UserAgent: "prawler/1.0 (+https://github.com/Puriice/prawler; Educational project; Contract: purinutt.amartayavis@g.swu.ac.th)",
+		Version: 1.0,
+		Contact: Contact{
+			Email: "purinutt.amartayavis@g.swu.ac.th",
+			Git:   "https://github.com/Puriice/prawler",
+		},
+		UserAgent: "prawler",
 		ExchangeName: ExchangeConfig{
 			Hosts:      "prawler.hosts",
 			Blacklists: "prawler.blacklists",
@@ -55,4 +68,8 @@ func GetConfig() *Config {
 	}
 
 	return config
+}
+
+func (c Config) GetDisplayUserAgent() string {
+	return fmt.Sprintf("%s/%f (%s; Email: %s)", c.UserAgent, c.Version, c.Contact.Git, c.Contact.Email)
 }
