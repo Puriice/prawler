@@ -37,7 +37,7 @@ func initBlacklist(repo repository.BlacklistRepository) {
 		fromJson = []string{}
 	}
 
-	maxNElement := max(len(fromJson), len(fromDatabase)) // Assume one is subset of another
+	maxNElement := min(max(len(fromJson), len(fromDatabase)), 4) // Assume one is subset of another
 	sets := make(map[string]struct{}, int(float32(maxNElement)*1.25))
 
 	for _, url := range fromJson {
