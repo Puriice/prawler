@@ -3,11 +3,9 @@ package crawler
 import (
 	"encoding/json"
 
-	"github.com/purrice/prawler/internal/config"
 	"github.com/purrice/prawler/internal/enum/hosts"
 	"github.com/purrice/prawler/internal/fetch"
 	"github.com/purrice/prawler/internal/model"
-	"github.com/purrice/prawler/internal/origin"
 	"github.com/purrice/prawler/internal/repository"
 	"github.com/purrice/prawler/internal/types"
 )
@@ -15,36 +13,27 @@ import (
 type Crawler struct {
 	agent         string
 	webRecordRepo repository.WebRecordRepository
-	blacklist     *config.Blacklists
 	fetcher       *fetch.Fetcher
 }
 
 func NewCrawler(
 	userAgent string,
 	webRecordRepo repository.WebRecordRepository,
-	blacklists *config.Blacklists,
 	fetcher *fetch.Fetcher,
 ) Crawler {
 	return Crawler{
 		agent:         userAgent,
 		webRecordRepo: webRecordRepo,
-		blacklist:     blacklists,
 		fetcher:       fetcher,
 	}
 }
 
 func (c Crawler) handleProduceEvent(payload model.URIPayload) error {
-	url, err := payload.GetHost()
+	// url, err := payload.GetHost()
 
-	if err != nil {
-		return err
-	}
-
-	origin := origin.GetOrigin(*url)
-
-	if c.blacklist.Contains(origin.String()) {
-		return nil // the target is on blacklisted act as consumed
-	}
+	// if err != nil {
+	// 	return err
+	// }
 
 	return nil
 }

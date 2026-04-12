@@ -40,23 +40,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	blacklistBroker, err := rabbitMQ.NewBroadcastBroker(cfg.ExchangeName.Blacklists)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	hostListenerConfig := messaging.NewRabbitListenerConfig(cfg.QueueName, "prawler.seeds")
 	hostListener, err := hostBroker.NewListenerWithConfig(hostListenerConfig)
 
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	blacklistListenerConfig := messaging.NewRabbitListenerConfig(crawlerUUID.String())
-	blacklistListenerConfig.Durable = true
-	blacklistListenerConfig.AutoDelete = true
-	blacklistListener, err := blacklistBroker.NewListenerWithConfig(blacklistListenerConfig)
 
 	db, err := db.NewDatabase()
 
@@ -70,20 +59,10 @@ func main() {
 
 	fetcher := fetch.NewFecter(nil)
 
-	blacklistsRepository := repository.NewPostgresBlacklistRepository(db)
-	blacklists := config.NewBlacklist(blacklistsRepository)
-
-	crawler := crawler.NewCrawler(cfg.UserAgent, webRecordsRepository, blacklists, &fetcher)
+	crawler := crawler.NewCrawler(cfg.UserAgent, webRecordsRepository, &fetcher)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-
-	go func() {
-		log.Println("Start listening to blacklist events.")
-		if err := blacklistListener.Subscribe(ctx, blacklists.Handle); err != nil {
-			log.Println(err)
-		}
-	}()
 
 	log.Println("Start listening to hosts producing events.")
 	if err := hostListener.Subscribe(ctx, crawler.Handle); err != nil {

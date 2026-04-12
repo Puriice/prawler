@@ -57,8 +57,7 @@ func main() {
 	robotsRepository := repository.NewPostgresRobotsRepository(db)
 	robotParser := robots.NewRobotParser(robotsRepository, &fetcher)
 
-	repo := repository.NewPostgresMasterRepository(db)
-	master := master.NewMasterNode(ctx, repo, &robotParser)
+	master := master.NewMasterNode(ctx, db, &robotParser)
 
 	log.Println("Start listening to slave producing events.")
 	if err := listener.Subscribe(ctx, master.Handle); err != nil {

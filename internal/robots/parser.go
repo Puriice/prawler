@@ -19,7 +19,7 @@ const (
 	readLimit  = 512 * kilobytes
 )
 
-var errNotAllowed = errors.New("Not Allowed")
+var ErrNotAllowed = errors.New("Not Allowed")
 
 func (r RobotParser) fetchRobots(url url.URL) (*string, error) {
 	url.Path = "/robots.txt"
@@ -35,7 +35,7 @@ func (r RobotParser) fetchRobots(url url.URL) (*string, error) {
 	case 404:
 		return nil, nil
 	case 403:
-		return nil, errNotAllowed
+		return nil, ErrNotAllowed
 	}
 
 	reader := io.LimitReader(res.Body, readLimit)
