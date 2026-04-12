@@ -25,28 +25,28 @@ func (s Event) IsValid() error {
 	return nil
 }
 
-type HostPayload struct {
-	Host      *string    `json:"host,omitempty"`
+type URIPayload struct {
+	URI       *string    `json:"host,omitempty"`
 	Timestamp *time.Time `json:"timestamp,omitempty"`
 }
 
-func (s HostPayload) IsValid() error {
-	if s.Host == nil || s.Timestamp == nil {
+func (s URIPayload) IsValid() error {
+	if s.URI == nil || s.Timestamp == nil {
 		return types.ErrMissingField
 	}
 
-	if *s.Host == "" {
-		return types.ErrInvalidSeed
+	if *s.URI == "" {
+		return types.ErrMissingURI
 	}
 
 	return nil
 }
 
-func (s HostPayload) GetHost() (*url.URL, error) {
-	url, err := url.Parse(*s.Host)
+func (s URIPayload) GetHost() (*url.URL, error) {
+	url, err := url.Parse(*s.URI)
 
 	if err != nil {
-		return nil, types.ErrInvalidSeed
+		return nil, types.ErrMissingURI
 	}
 
 	return url, nil

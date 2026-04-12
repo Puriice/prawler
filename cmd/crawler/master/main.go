@@ -11,8 +11,10 @@ import (
 	"github.com/puriice/golibs/pkg/env"
 	"github.com/puriice/golibs/pkg/messaging"
 	"github.com/purrice/prawler/internal/config"
+	"github.com/purrice/prawler/internal/fetch"
 	"github.com/purrice/prawler/internal/master"
 	"github.com/purrice/prawler/internal/repository"
+	"github.com/purrice/prawler/internal/robots"
 )
 
 func main() {
@@ -50,8 +52,13 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	fetcher := fetch.NewFecter(nil)
+
+	robotsRepository := repository.NewPostgresRobotsRepository(db)
+	robotParser := robots.NewRobotParser(robotsRepository, &fetcher)
+
 	repo := repository.NewPostgresMasterRepository(db)
-	master := master.NewMasterNode(repo, ctx)
+	master := master.NewMasterNode(ctx, repo, &robotParser)
 
 	log.Println("Start listening to slave producing events.")
 	if err := listener.Subscribe(ctx, master.Handle); err != nil {

@@ -42,8 +42,8 @@ func main() {
 		now := time.Now()
 		event := model.Event{
 			EventType: &eventType,
-			Payload: &model.HostPayload{
-				Host:      &seed,
+			Payload: &model.URIPayload{
+				URI:       &seed,
 				Timestamp: &now,
 			},
 		}

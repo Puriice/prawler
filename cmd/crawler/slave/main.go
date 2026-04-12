@@ -15,7 +15,6 @@ import (
 	"github.com/purrice/prawler/internal/crawler"
 	"github.com/purrice/prawler/internal/fetch"
 	"github.com/purrice/prawler/internal/repository"
-	"github.com/purrice/prawler/internal/robots"
 )
 
 func main() {
@@ -71,13 +70,10 @@ func main() {
 
 	fetcher := fetch.NewFecter(nil)
 
-	robotsRepository := repository.NewPostgresRobotsRepository(db)
-	robotParser := robots.NewRobotParser(robotsRepository, &fetcher)
-
 	blacklistsRepository := repository.NewPostgresBlacklistRepository(db)
 	blacklists := config.NewBlacklist(blacklistsRepository)
 
-	crawler := crawler.NewCrawler(cfg.UserAgent, robotParser, webRecordsRepository, blacklists, &fetcher)
+	crawler := crawler.NewCrawler(cfg.UserAgent, webRecordsRepository, blacklists, &fetcher)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

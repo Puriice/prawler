@@ -9,13 +9,11 @@ import (
 	"github.com/purrice/prawler/internal/model"
 	"github.com/purrice/prawler/internal/origin"
 	"github.com/purrice/prawler/internal/repository"
-	"github.com/purrice/prawler/internal/robots"
 	"github.com/purrice/prawler/internal/types"
 )
 
 type Crawler struct {
 	agent         string
-	robots        robots.RobotParser
 	webRecordRepo repository.WebRecordRepository
 	blacklist     *config.Blacklists
 	fetcher       *fetch.Fetcher
@@ -23,21 +21,19 @@ type Crawler struct {
 
 func NewCrawler(
 	userAgent string,
-	robots robots.RobotParser,
 	webRecordRepo repository.WebRecordRepository,
 	blacklists *config.Blacklists,
 	fetcher *fetch.Fetcher,
 ) Crawler {
 	return Crawler{
 		agent:         userAgent,
-		robots:        robots,
 		webRecordRepo: webRecordRepo,
 		blacklist:     blacklists,
 		fetcher:       fetcher,
 	}
 }
 
-func (c Crawler) handleProduceEvent(payload model.HostPayload) error {
+func (c Crawler) handleProduceEvent(payload model.URIPayload) error {
 	url, err := payload.GetHost()
 
 	if err != nil {
@@ -48,16 +44,6 @@ func (c Crawler) handleProduceEvent(payload model.HostPayload) error {
 
 	if c.blacklist.Contains(origin.String()) {
 		return nil // the target is on blacklisted act as consumed
-	}
-
-	rbs, err := c.robots.Parse(*url)
-
-	if err != nil {
-		return err
-	}
-
-	if !rbs.IsAllow(c.agent, url.String()) {
-		return nil // the target is not allow to crawl act as consumed
 	}
 
 	return nil
@@ -76,7 +62,7 @@ func (c Crawler) Handle(data []byte) error {
 		return err
 	}
 
-	payload, ok := event.Payload.(*model.HostPayload)
+	payload, ok := event.Payload.(*model.URIPayload)
 
 	if !ok {
 		return types.ErrInvalidPaylod

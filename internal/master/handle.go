@@ -5,16 +5,30 @@ import (
 	"encoding/json"
 
 	"github.com/purrice/prawler/internal/master/status"
+	"github.com/purrice/prawler/internal/model"
 	"github.com/purrice/prawler/internal/repository"
+	"github.com/purrice/prawler/internal/robots"
 )
 
-type MasterNode struct {
-	repo repository.MasterRepository
-	ctx  context.Context
+type MasterConfig struct {
 }
 
-func NewMasterNode(repo repository.MasterRepository, ctx context.Context) MasterNode {
-	return MasterNode{repo: repo, ctx: ctx}
+type MasterNode struct {
+	repo        repository.MasterRepository
+	ctx         context.Context
+	robotPraser *robots.RobotParser
+}
+
+func NewMasterNode(
+	ctx context.Context,
+	repository repository.MasterRepository,
+	robotPraser *robots.RobotParser,
+) MasterNode {
+	return MasterNode{
+		repo:        repository,
+		ctx:         ctx,
+		robotPraser: robotPraser,
+	}
 }
 
 func (m MasterNode) handleReportStatus(payload StatusPayload) error {
@@ -25,6 +39,10 @@ func (m MasterNode) handleReportStatus(payload StatusPayload) error {
 	case status.Deactivation:
 	}
 
+	return nil
+}
+
+func (m MasterNode) handleURIRegister(payload model.URIPayload) error {
 	return nil
 }
 
@@ -54,6 +72,18 @@ func (m MasterNode) Handle(data []byte) error {
 		}
 
 		return m.handleReportStatus(payload)
+	case URIRegister:
+		payload, ok := event.Payload.(model.URIPayload)
+
+		if !ok {
+			return nil
+		}
+
+		if err := payload.IsValid(); err != nil {
+			return nil
+		}
+
+		return m.handleURIRegister(payload)
 	}
 
 	return nil

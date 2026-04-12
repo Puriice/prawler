@@ -100,7 +100,7 @@ func (b *Blacklists) Handle(data []byte) error {
 	if err := event.IsValid(); err != nil {
 		return err
 	}
-	payload, ok := event.Payload.(*model.HostPayload)
+	payload, ok := event.Payload.(*model.URIPayload)
 
 	if !ok {
 		return types.ErrInvalidPaylod
@@ -108,9 +108,9 @@ func (b *Blacklists) Handle(data []byte) error {
 
 	switch *event.EventType {
 	case hosts.HostBlacklistAdd:
-		b.Add(*payload.Host)
+		b.Add(*payload.URI)
 	case hosts.HostBlacklistRemove:
-		b.Remove(*payload.Host)
+		b.Remove(*payload.URI)
 	}
 	return nil
 }
