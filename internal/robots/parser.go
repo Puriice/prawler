@@ -2,6 +2,7 @@ package robots
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log"
 	"net/url"
@@ -18,6 +19,8 @@ const (
 	readLimit  = 512 * kilobytes
 )
 
+var errNotAllowed = errors.New("Not Allowed")
+
 func (r RobotParser) fetchRobots(url url.URL) (*string, error) {
 	url.Path = "/robots.txt"
 	res, err := r.fetcher.Fetch(url)
@@ -27,6 +30,13 @@ func (r RobotParser) fetchRobots(url url.URL) (*string, error) {
 	}
 
 	defer res.Body.Close()
+
+	switch res.StatusCode {
+	case 404:
+		return nil, nil
+	case 403:
+		return nil, errNotAllowed
+	}
 
 	reader := io.LimitReader(res.Body, readLimit)
 	body, err := io.ReadAll(reader)
@@ -71,22 +81,24 @@ func (r RobotParser) Parse(url url.URL) (*Robots, error) {
 	log.Printf("%s/robots.txt not founded in the database. Try fetching the new one.", originStr)
 	raw, err = r.fetchRobots(origin)
 
-	if err != nil || *raw == "" {
+	if err != nil {
 		log.Printf("Failed to fetch %s/robots.txt", originStr)
 		return nil, ErrFailedToFetchRobots
 	}
 
-	go func() {
-		log.Printf("Saving %s/robots.txt", originStr)
-		err := r.repo.AddRobots(context.Background(), originStr, *raw)
+	if raw != nil && *raw != "" {
+		go func() {
+			log.Printf("Saving %s/robots.txt", originStr)
+			err := r.repo.AddRobots(context.Background(), originStr, *raw)
 
-		if err != nil {
-			log.Printf("Failed to saved %s/robots.txt. %v", originStr, err)
-			return
-		}
+			if err != nil {
+				log.Printf("Failed to saved %s/robots.txt. %v", originStr, err)
+				return
+			}
 
-		log.Printf("Saved %s/robots.txt", originStr)
-	}()
+			log.Printf("Saved %s/robots.txt", originStr)
+		}()
+	}
 
 	robots.Host = origin
 	robots.Raw = raw
