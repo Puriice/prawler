@@ -6,7 +6,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.9.1
 	github.com/jimsmart/grobotstxt v1.0.3
-	github.com/puriice/golibs v1.4.10
+	github.com/puriice/golibs v1.4.12
 	golang.org/x/time v0.15.0
 )
 
@@ -17,5 +17,5 @@ require (
 	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/rabbitmq/amqp091-go v1.10.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/text v0.35.0 // indirect
+	golang.org/x/text v0.36.0 // indirect
 )
