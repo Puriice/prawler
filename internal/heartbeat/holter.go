@@ -4,9 +4,6 @@ import (
 	"net/http"
 	"sync"
 	"time"
-
-	"github.com/puriice/golibs/pkg/env"
-	"github.com/puriice/golibs/pkg/server"
 )
 
 type Handler func(node Node)
@@ -96,21 +93,10 @@ func (h *Holter) Set(uuid string, payload any) bool {
 	return true
 }
 
-func (h *Holter) Run() {
+func (h *Holter) Run(mux *http.ServeMux) {
 	go h.Monitor()
 
-	host := env.Get("HOST", "")
-	port := env.Get("PORT", "5723")
-
-	server := server.NewServer(host, port, nil)
-
-	handler := http.NewServeMux()
-	handler.HandleFunc("/heartbeat", h.HandleBeats)
-	handler.HandleFunc("/nodes", h.HandleList)
-	handler.HandleFunc("/", h.HandleDashboard)
-
-	server.Handler = handler
-
-	go server.Start()
-
+	mux.HandleFunc("/heartbeat", h.HandleBeats)
+	mux.HandleFunc("/nodes", h.HandleList)
+	mux.HandleFunc("/", h.HandleDashboard)
 }

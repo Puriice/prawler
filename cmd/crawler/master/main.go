@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -11,6 +12,7 @@ import (
 	"github.com/puriice/golibs/pkg/db"
 	"github.com/puriice/golibs/pkg/env"
 	"github.com/puriice/golibs/pkg/messaging"
+	"github.com/puriice/golibs/pkg/server"
 	"github.com/purrice/prawler/internal/config"
 	"github.com/purrice/prawler/internal/heartbeat"
 	"github.com/purrice/prawler/internal/master"
@@ -51,15 +53,23 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	host := env.Get("HOST", "")
+	port := env.Get("PORT", "5723")
+
+	server := server.NewServer(host, port, nil)
+	mux := http.NewServeMux()
+
 	holterHandler := NewHolterHandler(ctx, db)
 	holter := heartbeat.NewHolter(5*time.Second, 5*time.Second, 2*time.Second)
 	holter.OnBeats(holterHandler.handleOnBeat)
 	holter.OnTimeout(holterHandler.handleOnTimeout)
-	holter.Run()
+	holter.Run(mux)
 
 	rabbit, listener := setupListener()
 	defer rabbit.Shutdown()
 
-	master.Run(ctx, db, *listener)
+	server.Handler = mux
+	server.Start()
+	master.Run(ctx, db, mux, *listener)
 	log.Println("Shuting down")
 }

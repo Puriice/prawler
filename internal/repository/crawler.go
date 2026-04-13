@@ -19,7 +19,7 @@ func NewPostgresCrawlerRepository(db *pgxpool.Pool) *PostgresCrawlerRepository {
 }
 
 func (r *PostgresCrawlerRepository) UpdateCrawlerStatus(ctx context.Context, uuid string, status string, lastSeen time.Time) error {
-	cmdTag, err := r.db.Exec(ctx, "INSERT INTO crawlers (uuid, status, last_seen) VALUES ($1, $2, $3) ON CONFLICT (uuid) DO UPDATE SET status = $2 AND last_seen = $3", uuid, status, lastSeen)
+	cmdTag, err := r.db.Exec(ctx, "INSERT INTO crawlers (uuid, status, last_seen) VALUES ($1, $2, $3) ON CONFLICT (uuid) DO UPDATE SET status = $2, last_seen = $3", uuid, status, lastSeen)
 
 	if err != nil {
 		return err
