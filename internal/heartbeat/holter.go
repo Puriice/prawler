@@ -9,7 +9,7 @@ import (
 	"github.com/puriice/golibs/pkg/server"
 )
 
-type Handler func(uuid string)
+type Handler func(node Node)
 
 type handlers struct {
 	onActivate Handler
@@ -33,7 +33,7 @@ type Holter struct {
 	handlers      handlers
 }
 
-func noAction(uuid string) {}
+func noAction(node Node) {}
 
 func NewHolter(timeout time.Duration, gracePeriod time.Duration, monitorPeriod time.Duration) *Holter {
 	return &Holter{

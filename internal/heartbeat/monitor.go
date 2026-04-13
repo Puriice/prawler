@@ -17,7 +17,7 @@ func (h *Holter) reconcile() {
 
 	now := time.Now()
 
-	var timeout []string
+	var timeout []Node
 
 	for _, node := range h.nodes {
 		timeSinceLastseen := now.Sub(node.LastSeen)
@@ -29,14 +29,14 @@ func (h *Holter) reconcile() {
 			node.Status = Unconscious
 		default:
 			node.Status = Dead
-			timeout = append(timeout, node.UUID)
+			timeout = append(timeout, *node)
 		}
 
 	}
 
 	h.mu.Unlock()
 
-	for _, uuid := range timeout {
-		go h.handlers.onTimeout(uuid)
+	for _, node := range timeout {
+		go h.handlers.onTimeout(node)
 	}
 }

@@ -3,9 +3,6 @@ package master
 import (
 	"context"
 	"log"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/puriice/golibs/pkg/messaging"
@@ -14,10 +11,7 @@ import (
 	"github.com/purrice/prawler/internal/robots"
 )
 
-func Run(db *pgxpool.Pool, listener messaging.RabbitListener) {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-
+func Run(ctx context.Context, db *pgxpool.Pool, listener messaging.RabbitListener) {
 	fetcher := fetch.NewFecter(nil)
 
 	robotsRepository := repository.NewPostgresRobotsRepository(db)

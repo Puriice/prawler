@@ -1,7 +1,11 @@
 package main
 
 import (
+	"context"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/puriice/golibs/pkg/db"
@@ -37,12 +41,6 @@ func setupListener() (*messaging.RabbitMQ, *messaging.RabbitListener) {
 func main() {
 	env.Init()
 
-	holter := heartbeat.NewHolter(5*time.Second, 5*time.Second, 2*time.Second)
-	holter.Run()
-
-	rabbit, listener := setupListener()
-	defer rabbit.Shutdown()
-
 	db, err := db.NewDatabase()
 
 	if err != nil {
@@ -50,6 +48,18 @@ func main() {
 	}
 	defer db.Close()
 
-	master.Run(db, *listener)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	holterHandler := NewHolterHandler(ctx, db)
+	holter := heartbeat.NewHolter(5*time.Second, 5*time.Second, 2*time.Second)
+	holter.OnBeats(holterHandler.handleOnBeat)
+	holter.OnTimeout(holterHandler.handleOnTimeout)
+	holter.Run()
+
+	rabbit, listener := setupListener()
+	defer rabbit.Shutdown()
+
+	master.Run(ctx, db, *listener)
 	log.Println("Shuting down")
 }

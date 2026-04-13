@@ -5,6 +5,11 @@ import (
 	"time"
 )
 
+type CrawlerRepository interface {
+	UpdateCrawlerStatus(ctx context.Context, uuid string, status string, lastSeen time.Time) error
+	RemoveCrawler(ctx context.Context, uuid string) error
+}
+
 type RobotsRepository interface {
 	AddRobots(context context.Context, host string, raw string) error
 	GetRobots(context context.Context, host string) (*string, *time.Time, error)

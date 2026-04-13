@@ -35,7 +35,7 @@ func (h *Holter) HandleBeats(w http.ResponseWriter, r *http.Request) {
 	node.LastSeen = time.Now()
 	h.mu.Unlock()
 
-	go h.handlers.onBeats(payload.UUID)
+	go h.handlers.onBeats(*node)
 
 	w.WriteHeader(http.StatusOK)
 }
