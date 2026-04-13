@@ -18,9 +18,12 @@ func (h *Holter) reconcile() {
 	now := time.Now()
 
 	var timeout []Node
+	var stateChanged []Node
 
 	for _, node := range h.nodes {
 		timeSinceLastseen := now.Sub(node.LastSeen)
+
+		prevState := node.Status
 
 		switch {
 		case timeSinceLastseen < h.timeout:
@@ -33,11 +36,17 @@ func (h *Holter) reconcile() {
 			timeout = append(timeout, *node)
 		}
 
+		if node.Status != prevState && node.Status != Dead {
+			stateChanged = append(stateChanged, *node)
+		}
 	}
 
 	h.mu.Unlock()
 
+	for _, node := range stateChanged {
+		go h.triggerStateChange(node)
+	}
 	for _, node := range timeout {
-		go h.triggerTimeoutHandler(node)
+		go h.triggerTimeout(node)
 	}
 }

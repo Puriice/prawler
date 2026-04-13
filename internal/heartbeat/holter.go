@@ -57,7 +57,7 @@ func (h *Holter) registerNode(uuid string) *Node {
 	return node
 }
 
-func (h *Holter) triggerBeatHandler(node Node) {
+func (h *Holter) triggerStateChange(node Node) {
 	err := h.repo.UpdateCrawlerStatus(h.ctx, node.UUID, string(node.Status), node.LastSeen)
 
 	if err != nil {
@@ -65,7 +65,7 @@ func (h *Holter) triggerBeatHandler(node Node) {
 	}
 }
 
-func (h *Holter) triggerTimeoutHandler(node Node) {
+func (h *Holter) triggerTimeout(node Node) {
 	err := h.repo.RemoveCrawler(h.ctx, node.UUID)
 	if err != nil {
 		log.Println(err)

@@ -39,7 +39,10 @@ func (h *Holter) handleInit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.mu.Lock()
 	h.registerNode(uuid.String())
+	h.mu.Unlock()
+
 	payload := HeartbeatPayload{
 		UUID: uuid.String(),
 	}
@@ -57,7 +60,6 @@ func (h *Holter) handleBeats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.mu.Lock()
-
 	node, exists := h.nodes[payload.UUID]
 
 	if !exists {
@@ -67,7 +69,9 @@ func (h *Holter) handleBeats(w http.ResponseWriter, r *http.Request) {
 	node.LastSeen = time.Now()
 	h.mu.Unlock()
 
-	go h.triggerBeatHandler(*node)
+	if !exists {
+		go h.triggerStateChange(*node)
+	}
 
 	w.WriteHeader(http.StatusOK)
 }
