@@ -61,7 +61,7 @@ func main() {
 	mux := http.NewServeMux()
 
 	repo := repository.NewPostgresCrawlerRepository(db)
-	holter := heartbeat.NewHolter(ctx, 5*time.Second, 5*time.Second, 2*time.Second, repo)
+	holter := heartbeat.NewHolter(ctx, 5*time.Second, 10*time.Second, 2*time.Second, repo)
 	holter.Run(mux)
 
 	rabbit, listener := setupListener()
