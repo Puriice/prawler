@@ -21,7 +21,7 @@ import (
 	"github.com/purrice/prawler/internal/robots"
 )
 
-func handleHeartbeat() {
+func handleHeartbeat() *heartbeat.Holter {
 	holter := heartbeat.NewHolter(5*time.Second, 5*time.Second, 2*time.Second)
 	go holter.Monitor()
 
@@ -38,6 +38,8 @@ func handleHeartbeat() {
 	server.Handler = handler
 
 	go server.Start()
+
+	return holter
 }
 
 func main() {

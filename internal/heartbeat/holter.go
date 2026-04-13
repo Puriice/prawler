@@ -17,6 +17,7 @@ type Node struct {
 	UUID     string    `json:"uuid"`
 	Status   Status    `json:"status"`
 	LastSeen time.Time `json:"last_seen"`
+	Payload  any
 }
 
 type Holter struct {
@@ -54,4 +55,39 @@ func (h *Holter) OnBeats(handler Handler) {
 
 func (h *Holter) OnTimeout(handler Handler) {
 	h.handlers.onTimeout = handler
+}
+
+func (h *Holter) Get(uuid string) (any, bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	nodes, exist := h.nodes[uuid]
+
+	if !exist {
+		return nil, false
+	}
+
+	if nodes.Status != Alive {
+		return nil, false
+	}
+
+	return nodes.Payload, nodes.Payload != nil
+}
+
+func (h *Holter) Set(uuid string, payload any) bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	nodes, exist := h.nodes[uuid]
+
+	if !exist {
+		return false
+	}
+
+	if nodes.Status != Alive {
+		return false
+	}
+
+	nodes.Payload = payload
+	return true
 }
