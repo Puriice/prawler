@@ -12,6 +12,7 @@ import (
 	"github.com/puriice/golibs/pkg/db"
 	"github.com/puriice/golibs/pkg/env"
 	"github.com/puriice/golibs/pkg/messaging"
+	"github.com/puriice/golibs/pkg/middleware"
 	"github.com/puriice/golibs/pkg/server"
 	"github.com/purrice/prawler/internal/config"
 	"github.com/purrice/prawler/internal/heartbeat"
@@ -67,7 +68,7 @@ func main() {
 	rabbit, listener := setupListener()
 	defer rabbit.Shutdown()
 
-	server.Handler = mux
+	server.Handler = middleware.Logger(mux)
 	server.Start()
 	master.Run(ctx, db, *listener)
 	log.Println("Shuting down")

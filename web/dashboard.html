@@ -85,11 +85,9 @@
 			data.forEach(node => {
 				const tr = document.createElement('tr');
 
-				const statusClass = node.status.toLowerCase();
-
 				tr.innerHTML = `
 					<td>${node.uuid}</td>
-					<td class="${statusClass}">${node.status}</td>
+					<td class="${node.status}">${node.status}</td>
 					<td>${new Date(node.last_seen).toLocaleTimeString()}</td>`;
 
 				tbody.appendChild(tr);
