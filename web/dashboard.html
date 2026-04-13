@@ -76,7 +76,7 @@
 
 	<script>
 		async function fetchNodes() {
-			const res = await fetch('/nodes');
+			const res = await fetch('/api/v1/nodes');
 			const data = await res.json();
 
 			const tbody = document.getElementById('nodes');

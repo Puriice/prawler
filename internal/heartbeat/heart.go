@@ -41,7 +41,7 @@ func (h *Heart) sendHeartbeat() error {
 		Timeout: 2 * time.Second,
 	}
 
-	resp, err := client.Post(h.Endpoint+"/heartbeat", "application/json", bytes.NewBuffer(data))
+	resp, err := client.Post(h.Endpoint+"/api/v1/heartbeat", "application/json", bytes.NewBuffer(data))
 	if err != nil {
 		return err
 	}

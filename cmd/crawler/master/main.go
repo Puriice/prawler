@@ -16,6 +16,7 @@ import (
 	"github.com/purrice/prawler/internal/config"
 	"github.com/purrice/prawler/internal/heartbeat"
 	"github.com/purrice/prawler/internal/master"
+	"github.com/purrice/prawler/internal/repository"
 )
 
 func setupListener() (*messaging.RabbitMQ, *messaging.RabbitListener) {
@@ -59,10 +60,8 @@ func main() {
 	server := server.NewServer(host, port, nil)
 	mux := http.NewServeMux()
 
-	holterHandler := NewHolterHandler(ctx, db)
-	holter := heartbeat.NewHolter(5*time.Second, 5*time.Second, 2*time.Second)
-	holter.OnBeats(holterHandler.handleOnBeat)
-	holter.OnTimeout(holterHandler.handleOnTimeout)
+	repo := repository.NewPostgresCrawlerRepository(db)
+	holter := heartbeat.NewHolter(ctx, 5*time.Second, 5*time.Second, 2*time.Second, repo)
 	holter.Run(mux)
 
 	rabbit, listener := setupListener()

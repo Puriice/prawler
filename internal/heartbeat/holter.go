@@ -9,14 +9,6 @@ import (
 	"github.com/purrice/prawler/internal/repository"
 )
 
-type Handler func(node Node)
-
-type handlers struct {
-	onActivate Handler
-	onBeats    Handler
-	onTimeout  Handler
-}
-
 type Node struct {
 	UUID     string    `json:"uuid"`
 	Status   Status    `json:"status"`
@@ -31,23 +23,24 @@ type Holter struct {
 	grace         time.Duration
 	nodes         map[string]*Node
 	mu            sync.Mutex
-	handlers      handlers
 	repo          repository.CrawlerRepository
 }
 
-func noAction(node Node) {}
+func NewHolter(
+	ctx context.Context,
+	timeout time.Duration,
+	gracePeriod time.Duration,
+	monitorPeriod time.Duration,
+	repository repository.CrawlerRepository,
 
-func NewHolter(timeout time.Duration, gracePeriod time.Duration, monitorPeriod time.Duration) *Holter {
+) *Holter {
 	return &Holter{
+		ctx:           ctx,
 		MonitorPeriod: monitorPeriod,
 		timeout:       timeout,
 		grace:         timeout + gracePeriod,
 		nodes:         make(map[string]*Node),
-		handlers: handlers{
-			onActivate: noAction,
-			onBeats:    noAction,
-			onTimeout:  noAction,
-		},
+		repo:          repository,
 	}
 }
 
@@ -63,16 +56,12 @@ func (h *Holter) registerNode(uuid string) *Node {
 	return node
 }
 
-func (h *Holter) OnActivate(handler Handler) {
-	h.handlers.onActivate = handler
+func (h *Holter) triggerBeatHandler(node Node) {
+	h.repo.UpdateCrawlerStatus(h.ctx, node.UUID, string(node.Status), node.LastSeen)
 }
 
-func (h *Holter) OnBeats(handler Handler) {
-	h.handlers.onBeats = handler
-}
-
-func (h *Holter) OnTimeout(handler Handler) {
-	h.handlers.onTimeout = handler
+func (h *Holter) triggerTimeoutHandler(node Node) {
+	h.repo.RemoveCrawler(h.ctx, node.UUID)
 }
 
 func (h *Holter) Get(uuid string) (any, bool) {

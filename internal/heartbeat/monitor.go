@@ -37,6 +37,6 @@ func (h *Holter) reconcile() {
 	h.mu.Unlock()
 
 	for _, node := range timeout {
-		go h.handlers.onTimeout(node)
+		go h.triggerTimeoutHandler(node)
 	}
 }
