@@ -11,7 +11,7 @@ type HeartbeatPayload struct {
 	UUID string `json:"uuid"`
 }
 
-func (h *Holter) HandleFunc(w http.ResponseWriter, r *http.Request) {
+func (h *Holter) HandleBeats(w http.ResponseWriter, r *http.Request) {
 	var payload HeartbeatPayload
 
 	if err := json.ParseJSON(r, &payload); err != nil {

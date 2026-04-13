@@ -31,7 +31,7 @@ func handleHeartbeat() {
 	server := server.NewServer(host, port, nil)
 
 	handler := http.NewServeMux()
-	handler.HandleFunc("/heartbeat", holter.HandleFunc)
+	handler.HandleFunc("/heartbeat", holter.HandleBeats)
 
 	server.Handler = handler
 
