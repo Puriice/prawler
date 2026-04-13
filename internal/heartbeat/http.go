@@ -20,7 +20,6 @@ func (h *Holter) HandleBeats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.mu.Lock()
-	defer h.mu.Unlock()
 
 	node, exists := h.nodes[payload.UUID]
 
@@ -34,6 +33,7 @@ func (h *Holter) HandleBeats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	node.LastSeen = time.Now()
+	h.mu.Unlock()
 
 	go h.handlers.onBeats(payload.UUID)
 
