@@ -1,8 +1,12 @@
 package heartbeat
 
 import (
+	"net/http"
 	"sync"
 	"time"
+
+	"github.com/puriice/golibs/pkg/env"
+	"github.com/puriice/golibs/pkg/server"
 )
 
 type Handler func(uuid string)
@@ -90,4 +94,23 @@ func (h *Holter) Set(uuid string, payload any) bool {
 
 	nodes.Payload = payload
 	return true
+}
+
+func (h *Holter) Run() {
+	go h.Monitor()
+
+	host := env.Get("HOST", "")
+	port := env.Get("PORT", "5723")
+
+	server := server.NewServer(host, port, nil)
+
+	handler := http.NewServeMux()
+	handler.HandleFunc("/heartbeat", h.HandleBeats)
+	handler.HandleFunc("/nodes", h.HandleList)
+	handler.HandleFunc("/", h.HandleDashboard)
+
+	server.Handler = handler
+
+	go server.Start()
+
 }
