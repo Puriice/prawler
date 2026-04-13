@@ -29,6 +29,7 @@ func (h *Holter) reconcile() {
 			node.Status = Unconscious
 		default:
 			node.Status = Dead
+			delete(h.nodes, node.UUID)
 			timeout = append(timeout, *node)
 		}
 

@@ -33,7 +33,7 @@ func (r *PostgresCrawlerRepository) UpdateCrawlerStatus(ctx context.Context, uui
 }
 
 func (r *PostgresCrawlerRepository) RemoveCrawler(ctx context.Context, uuid string) error {
-	cmdTag, err := r.db.Exec(ctx, "DELETE FROM crawlers WHERE uuid = $1")
+	cmdTag, err := r.db.Exec(ctx, "DELETE FROM crawlers WHERE uuid = $1", uuid)
 
 	if err != nil {
 		return err

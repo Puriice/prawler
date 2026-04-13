@@ -2,6 +2,7 @@ package heartbeat
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -57,11 +58,18 @@ func (h *Holter) registerNode(uuid string) *Node {
 }
 
 func (h *Holter) triggerBeatHandler(node Node) {
-	h.repo.UpdateCrawlerStatus(h.ctx, node.UUID, string(node.Status), node.LastSeen)
+	err := h.repo.UpdateCrawlerStatus(h.ctx, node.UUID, string(node.Status), node.LastSeen)
+
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 func (h *Holter) triggerTimeoutHandler(node Node) {
-	h.repo.RemoveCrawler(h.ctx, node.UUID)
+	err := h.repo.RemoveCrawler(h.ctx, node.UUID)
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 func (h *Holter) Get(uuid string) (any, bool) {

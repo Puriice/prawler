@@ -3,28 +3,35 @@ package main
 import (
 	"context"
 	"log"
+	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/google/uuid"
 	"github.com/puriice/golibs/pkg/db"
 	"github.com/puriice/golibs/pkg/env"
 	"github.com/puriice/golibs/pkg/messaging"
 	"github.com/purrice/prawler/internal/config"
 	"github.com/purrice/prawler/internal/crawler"
 	"github.com/purrice/prawler/internal/fetch"
+	"github.com/purrice/prawler/internal/heartbeat"
 	"github.com/purrice/prawler/internal/repository"
 )
 
 func main() {
-	crawlerUUID := uuid.New()
-
-	log.Printf("Crawler UUID: %s\n", crawlerUUID.String())
 
 	env.Init()
 	cfg := config.GetConfig()
+
 	amqpURL := env.Get("amqp_url", "amqp://guest:guest@localhost/")
+	holterEndpoint, err := url.Parse(env.Get("holter_url", "http://localhost:5472"))
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	heart := heartbeat.NewHeart(*holterEndpoint, nil)
+	go heart.Beat()
 
 	rabbitMQ, err := messaging.NewRabbitMQ(amqpURL)
 
