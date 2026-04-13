@@ -24,14 +24,16 @@ func main() {
 	cfg := config.GetConfig()
 
 	amqpURL := env.Get("amqp_url", "amqp://guest:guest@localhost/")
-	holterEndpoint, err := url.Parse(env.Get("holter_url", "http://localhost:5472"))
+	holterEndpoint, err := url.Parse(env.Get("holter_url", "http://localhost:5723"))
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	heart := heartbeat.NewHeart(*holterEndpoint, nil)
-	go heart.Beat()
+	go heart.Beat(ctx)
 
 	rabbitMQ, err := messaging.NewRabbitMQ(amqpURL)
 
@@ -67,9 +69,6 @@ func main() {
 	fetcher := fetch.NewFecter(nil)
 
 	crawler := crawler.NewCrawler(cfg.UserAgent, webRecordsRepository, &fetcher)
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
 
 	log.Println("Start listening to hosts producing events.")
 	if err := hostListener.Subscribe(ctx, crawler.Handle); err != nil {

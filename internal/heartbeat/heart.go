@@ -2,6 +2,7 @@ package heartbeat
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"math/rand"
 	"net/http"
@@ -97,29 +98,36 @@ func addJitter(d time.Duration) time.Duration {
 	return d + jitter
 }
 
-func (h *Heart) Beat() {
+func (h *Heart) Beat(ctx context.Context) {
+loop:
 	for {
-		err := h.sendHeartbeat()
+		select {
+		case <-ctx.Done():
+			break loop
 
-		if err != nil {
-			// Wait with exponential backoff + jitter
-			wait := addJitter(h.currentBackoff)
+		default:
+			err := h.sendHeartbeat()
 
-			time.Sleep(wait)
+			if err != nil {
+				// Wait with exponential backoff + jitter
+				wait := addJitter(h.currentBackoff)
 
-			// Exponential increase
-			h.currentBackoff *= 2
+				time.Sleep(wait)
 
-			if h.currentBackoff > h.maxBackoff {
-				h.currentBackoff = h.maxBackoff
+				// Exponential increase
+				h.currentBackoff *= 2
+
+				if h.currentBackoff > h.maxBackoff {
+					h.currentBackoff = h.maxBackoff
+				}
+
+				continue
 			}
 
-			continue
+			h.currentBackoff = h.interval
+
+			time.Sleep(h.interval)
 		}
-
-		h.currentBackoff = h.interval
-
-		time.Sleep(h.interval)
 	}
 }
 
