@@ -19,15 +19,15 @@ func (h *Holter) reconcile() {
 	now := time.Now()
 
 	for _, node := range h.nodes {
-		timeSinceLastseen := now.Sub(node.lastseen)
+		timeSinceLastseen := now.Sub(node.LastSeen)
 
 		switch {
 		case timeSinceLastseen < h.timeout:
-			node.status = Alive
+			node.Status = Alive
 		case timeSinceLastseen < h.grace:
-			node.status = Unconscious
+			node.Status = Unconscious
 		default:
-			node.status = Dead
+			node.Status = Dead
 		}
 	}
 }

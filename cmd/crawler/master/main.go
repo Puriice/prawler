@@ -32,6 +32,8 @@ func handleHeartbeat() {
 
 	handler := http.NewServeMux()
 	handler.HandleFunc("/heartbeat", holter.HandleBeats)
+	handler.HandleFunc("/nodes", holter.HandleList)
+	handler.HandleFunc("/", holter.HandleDashboard)
 
 	server.Handler = handler
 
@@ -72,6 +74,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer db.Close()
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

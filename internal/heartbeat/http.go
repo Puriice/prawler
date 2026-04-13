@@ -26,16 +26,29 @@ func (h *Holter) HandleBeats(w http.ResponseWriter, r *http.Request) {
 
 	if !exists {
 		node = &Node{
-			uuid:   payload.UUID,
-			status: Alive,
+			UUID:   payload.UUID,
+			Status: Alive,
 		}
 
 		h.nodes[payload.UUID] = node
 	}
 
-	node.lastseen = time.Now()
+	node.LastSeen = time.Now()
 
 	go h.handlers.onBeats(payload.UUID)
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (c *Holter) HandleList(w http.ResponseWriter, r *http.Request) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	result := make([]Node, 0, len(c.nodes))
+
+	for _, n := range c.nodes {
+		result = append(result, *n)
+	}
+
+	json.SendJSON(w, 200, result)
 }

@@ -14,9 +14,9 @@ type handlers struct {
 }
 
 type Node struct {
-	uuid     string
-	lastseen time.Time
-	status   Status
+	UUID     string    `json:"uuid"`
+	Status   Status    `json:"status"`
+	LastSeen time.Time `json:"last_seen"`
 }
 
 type Holter struct {
@@ -35,6 +35,7 @@ func NewHolter(timeout time.Duration, gracePeriod time.Duration, monitorPeriod t
 		MonitorPeriod: monitorPeriod,
 		timeout:       timeout,
 		grace:         timeout + gracePeriod,
+		nodes:         make(map[string]*Node),
 		handlers: handlers{
 			onActivate: noAction,
 			onBeats:    noAction,

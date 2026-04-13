@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>Node Controller Dashboard</title>
+	<style>
+		body {
+			font-family: Arial;
+			background: #0f172a;
+			color: #e2e8f0;
+			padding: 20px;
+		}
+
+		header {
+			display: flex;
+			justify-content: space-between;
+		}
+
+		h1 {
+			color: #38bdf8;
+			margin: 0;
+		}
+
+		button {
+			cursor: pointer;
+		}
+
+		table {
+			width: 100%;
+			border-collapse: collapse;
+			margin-top: 20px;
+		}
+
+		th,
+		td {
+			padding: 12px;
+			border-bottom: 1px solid #334155;
+		}
+
+		th {
+			text-align: left;
+			color: #94a3b8;
+		}
+
+		.Alive {
+			color: #22c55e;
+		}
+
+		.Unconscious {
+			color: #facc15;
+		}
+
+		.Dead {
+			color: #ef4444;
+		}
+	</style>
+</head>
+
+<body>
+
+	<header>
+		<h1>Node Dashboard</h1>
+		<button class="fetching" onclick="fetchNodes()">Fetch Now</button>
+	</header>
+
+	<table>
+		<thead>
+			<tr>
+				<th>Node ID</th>
+				<th>Status</th>
+				<th>Last Seen</th>
+			</tr>
+		</thead>
+		<tbody id="nodes"></tbody>
+	</table>
+
+	<script>
+		async function fetchNodes() {
+			const res = await fetch('/nodes');
+			const data = await res.json();
+
+			const tbody = document.getElementById('nodes');
+			tbody.innerHTML = '';
+
+			data.forEach(node => {
+				const tr = document.createElement('tr');
+
+				const statusClass = node.status.toLowerCase();
+
+				tr.innerHTML = `
+					<td>${node.uuid}</td>
+					<td class="${statusClass}">${node.status}</td>
+					<td>${new Date(node.last_seen).toLocaleTimeString()}</td>`;
+
+				tbody.appendChild(tr);
+			});
+		}
+
+		// Refresh every 60 seconds
+		setInterval(fetchNodes, 60000);
+		fetchNodes();
+	</script>
+
+</body>
+
+</html>
