@@ -8,7 +8,6 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/purrice/prawler/internal/config"
-	"github.com/purrice/prawler/internal/master/status"
 	"github.com/purrice/prawler/internal/model"
 	"github.com/purrice/prawler/internal/origin"
 	"github.com/purrice/prawler/internal/repository"
@@ -44,17 +43,6 @@ func NewMasterNode(
 		blacklists:  blacklists,
 		robotPraser: robotPraser,
 	}
-}
-
-func (m MasterNode) handleReportStatus(payload StatusPayload) error {
-	switch *payload.Status {
-	case status.Activation:
-		return m.repo.AddCrawler(m.ctx, *payload.UUID, *payload.Timestamp)
-	case status.Heartbeat:
-	case status.Deactivation:
-	}
-
-	return nil
 }
 
 func (m MasterNode) handleURIRegister(payload model.URIPayload) error {
@@ -100,18 +88,6 @@ func (m MasterNode) Handle(data []byte) error {
 	}
 
 	switch event.Type {
-	case StatusReport:
-		payload, ok := event.Payload.(StatusPayload)
-
-		if !ok {
-			return nil
-		}
-
-		if err := payload.IsValid(); err != nil {
-			return nil
-		}
-
-		return m.handleReportStatus(payload)
 	case URIRegister:
 		payload, ok := event.Payload.(model.URIPayload)
 
