@@ -22,7 +22,7 @@ import (
 )
 
 func handleHeartbeat() {
-	holter := heartbeat.NewHolter(10*time.Second, 2*time.Second)
+	holter := heartbeat.NewHolter(5*time.Second, 5*time.Second, 2*time.Second)
 	go holter.Monitor()
 
 	host := env.Get("HOST", "")

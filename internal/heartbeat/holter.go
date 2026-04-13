@@ -13,20 +13,28 @@ type handlers struct {
 	onTimeout  Handler
 }
 
+type Node struct {
+	uuid     string
+	lastseen time.Time
+	status   Status
+}
+
 type Holter struct {
 	MonitorPeriod time.Duration
-	Timeout       time.Duration
-	nodes         map[string]time.Time
+	timeout       time.Duration
+	grace         time.Duration
+	nodes         map[string]*Node
 	mu            sync.Mutex
 	handlers      handlers
 }
 
 func noAction(uuid string) {}
 
-func NewHolter(timeout time.Duration, monitorPeriod time.Duration) *Holter {
+func NewHolter(timeout time.Duration, gracePeriod time.Duration, monitorPeriod time.Duration) *Holter {
 	return &Holter{
 		MonitorPeriod: monitorPeriod,
-		Timeout:       timeout,
+		timeout:       timeout,
+		grace:         timeout + gracePeriod,
 		handlers: handlers{
 			onActivate: noAction,
 			onBeats:    noAction,

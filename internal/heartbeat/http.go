@@ -22,7 +22,18 @@ func (h *Holter) HandleFunc(w http.ResponseWriter, r *http.Request) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	h.nodes[payload.UUID] = time.Now()
+	node, exists := h.nodes[payload.UUID]
+
+	if !exists {
+		node = &Node{
+			uuid:   payload.UUID,
+			status: Alive,
+		}
+
+		h.nodes[payload.UUID] = node
+	}
+
+	node.lastseen = time.Now()
 
 	go h.handlers.onBeats(payload.UUID)
 
