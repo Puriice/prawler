@@ -3,7 +3,6 @@ package master
 import (
 	"context"
 	"log"
-	"net/http"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/puriice/golibs/pkg/messaging"
@@ -12,7 +11,7 @@ import (
 	"github.com/purrice/prawler/internal/robots"
 )
 
-func Run(ctx context.Context, db *pgxpool.Pool, mux *http.ServeMux, listener messaging.RabbitListener) {
+func Run(ctx context.Context, db *pgxpool.Pool, listener messaging.RabbitListener) {
 	fetcher := fetch.NewFecter(nil)
 
 	robotsRepository := repository.NewPostgresRobotsRepository(db)

@@ -69,6 +69,6 @@ func main() {
 
 	server.Handler = mux
 	server.Start()
-	master.Run(ctx, db, mux, *listener)
+	master.Run(ctx, db, *listener)
 	log.Println("Shuting down")
 }
