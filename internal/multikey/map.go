@@ -55,6 +55,22 @@ func (m *Map[K, V]) Put(keys []K, value V) {
 	}
 }
 
+func (m *Map[K, V]) AddValue(value V) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// If value already exists → do nothing
+	if _, exists := m.valueToIndex[value]; exists {
+		return
+	}
+
+	idx := len(m.values)
+	m.values = append(m.values, value)
+
+	m.indexToKeys[idx] = make(map[K]struct{})
+	m.valueToIndex[value] = idx
+}
+
 // Get retrieves a value by key
 func (m *Map[K, V]) Get(key K) (V, bool) {
 	m.mu.RLock()
