@@ -28,7 +28,7 @@ func New[K comparable, V comparable]() *Map[K, V] {
 
 // Put inserts a value with multiple keys
 // If a key already exists, it will be overwritten to point to the new value
-func (m *Map[K, V]) Put(keys []K, value V) {
+func (m *Map[K, V]) Put(key K, value V) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -44,15 +44,13 @@ func (m *Map[K, V]) Put(keys []K, value V) {
 	}
 
 	// Assign keys
-	for _, k := range keys {
-		// If key already exists, remove from old group
-		if oldIdx, ok := m.keyToIndex[k]; ok {
-			delete(m.indexToKeys[oldIdx], k)
-		}
-
-		m.keyToIndex[k] = idx
-		m.indexToKeys[idx][k] = struct{}{}
+	// If key already exists, remove from old group
+	if oldIdx, ok := m.keyToIndex[key]; ok {
+		delete(m.indexToKeys[oldIdx], key)
 	}
+
+	m.keyToIndex[key] = idx
+	m.indexToKeys[idx][key] = struct{}{}
 }
 
 func (m *Map[K, V]) AddValue(value V) {
@@ -83,6 +81,33 @@ func (m *Map[K, V]) Get(key K) (V, bool) {
 	}
 
 	return m.values[idx], true
+}
+
+func (m *Map[K, V]) GetValueWithLeastKey() (V, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	if len(m.values) == 0 {
+		var zero V
+		return zero, false
+	}
+
+	minIdx := -1
+	minLoad := int(^uint(0) >> 1)
+
+	for idx, keys := range m.indexToKeys {
+		if len(keys) < minLoad {
+			minLoad = len(keys)
+			minIdx = idx
+		}
+	}
+
+	if minIdx == -1 {
+		var zero V
+		return zero, false
+	}
+
+	return m.values[minIdx], true
 }
 
 func (m *Map[K, V]) removeByIndex(idx int) {
