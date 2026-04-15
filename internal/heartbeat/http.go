@@ -76,13 +76,13 @@ func (h *Holter) handleBeats(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (c *Holter) handleList(w http.ResponseWriter, r *http.Request) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+func (h *Holter) handleList(w http.ResponseWriter, r *http.Request) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 
-	result := make([]Node, 0, len(c.nodes))
+	result := make([]Node, 0, len(h.nodes))
 
-	for _, n := range c.nodes {
+	for _, n := range h.nodes {
 		result = append(result, *n)
 	}
 

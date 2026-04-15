@@ -61,7 +61,7 @@ func NewMasterNode(
 
 	config := config.GetConfig()
 
-	return MasterNode{
+	master := MasterNode{
 		ctx:    ctx,
 		config: config,
 
@@ -74,10 +74,24 @@ func NewMasterNode(
 
 		rabbit: rabbit,
 	}
+
+	holter.OnChange(master.handleNodeStatusChanges)
+	holter.OnTimeout(master.handleNodeStatusChanges)
+
+	return master
 }
 
 func (m *MasterNode) SetupHolter(mux *http.ServeMux) {
 	m.holter.Run(mux)
+}
+
+func (m *MasterNode) handleNodeStatusChanges(node heartbeat.Node) {
+	switch node.Status {
+	case heartbeat.Alive:
+		m.planner.AddCrawler(node.UUID)
+	case heartbeat.Unconscious, heartbeat.Dead:
+		m.planner.RemoveCrawler(node.UUID)
+	}
 }
 
 func (m MasterNode) handleURIRegister(payload model.URIPayload) error {
