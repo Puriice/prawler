@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -19,6 +20,10 @@ import (
 	"github.com/purrice/prawler/internal/origin"
 	"github.com/purrice/prawler/internal/repository"
 	"github.com/purrice/prawler/internal/robots"
+)
+
+var (
+	ErrNoAvaliableCrawler = errors.New("No crawler avaliable")
 )
 
 type MasterConfig struct {
@@ -101,6 +106,29 @@ func (m MasterNode) handleURIRegister(payload model.URIPayload) error {
 		return nil
 	}
 
+	crawler, ok := m.planner.Plan(*url)
+
+	if !ok {
+		return ErrNoAvaliableCrawler
+	}
+
+	broker, err := m.rabbit.NewBroker(m.config.ExchangeName.URI)
+
+	if err != nil {
+		return err
+	}
+
+	now := time.Now()
+
+	err = broker.Publish(fmt.Sprintf("%s.%s", m.config.QueueName, crawler), model.URIPayload{
+		URI:       payload.URI,
+		Timestamp: &now,
+	})
+
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -142,7 +170,7 @@ func (m MasterNode) Run() {
 		log.Fatal(err)
 	}
 
-	listenerConfig := messaging.NewRabbitListenerConfig(m.config.ExchangeName.Master, "prawler.master.*")
+	listenerConfig := messaging.NewRabbitListenerConfig(m.config.ExchangeName.Master, fmt.Sprintf("%s.#", m.config.ExchangeName.Master))
 	listener, err := broker.NewListenerWithConfig(listenerConfig)
 
 	log.Println("Start listening to slave producing events.")

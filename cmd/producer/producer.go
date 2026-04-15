@@ -1,13 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"time"
 
 	"github.com/puriice/golibs/pkg/env"
 	"github.com/puriice/golibs/pkg/messaging"
 	"github.com/purrice/prawler/internal/config"
-	"github.com/purrice/prawler/internal/enum/hosts"
+	"github.com/purrice/prawler/internal/master"
 	"github.com/purrice/prawler/internal/model"
 )
 
@@ -30,24 +31,22 @@ func main() {
 
 	defer rabbitMQ.Shutdown()
 
-	broker, err := rabbitMQ.NewBroker(config.ExchangeName.URI)
+	broker, err := rabbitMQ.NewBroker(config.ExchangeName.Master)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	eventType := hosts.HostProduced
-
 	for _, seed := range seeds {
 		now := time.Now()
-		event := model.Event{
-			EventType: &eventType,
+		event := master.Event{
+			Type: master.URIRegister,
 			Payload: &model.URIPayload{
 				URI:       &seed,
 				Timestamp: &now,
 			},
 		}
-		err := broker.Publish("prawler.seeds", event)
+		err := broker.Publish(fmt.Sprintf("%s.uri", config.ExchangeName.Master), event)
 
 		if err != nil {
 			log.Println(err)

@@ -50,7 +50,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	hostListenerConfig := messaging.NewRabbitListenerConfig(cfg.QueueName, fmt.Sprintf("%s.%s", cfg.QueueName, heart.UUID()))
+	qName := fmt.Sprintf("%s.%s", cfg.QueueName, heart.UUID())
+	hostListenerConfig := messaging.NewRabbitListenerConfig(qName, qName)
+	hostListenerConfig.AutoDelete = true
+	hostListenerConfig.Durable = true
+	hostListenerConfig.Exclusive = true
 	hostListener, err := hostBroker.NewListenerWithConfig(hostListenerConfig)
 
 	if err != nil {

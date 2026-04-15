@@ -45,9 +45,10 @@ func main() {
 
 	master := master.NewMasterNode(ctx, db, rabbit)
 	master.SetupHolter(mux)
-	master.Run()
 
 	server.Handler = middleware.Logger(mux)
 	server.Start()
+
+	master.Run()
 	log.Println("Shuting down")
 }

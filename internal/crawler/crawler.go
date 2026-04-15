@@ -2,6 +2,7 @@ package crawler
 
 import (
 	"encoding/json"
+	"log"
 
 	"github.com/purrice/prawler/internal/enum/hosts"
 	"github.com/purrice/prawler/internal/fetch"
@@ -29,6 +30,7 @@ func NewCrawler(
 }
 
 func (c Crawler) handleProduceEvent(payload model.URIPayload) error {
+	log.Printf("Recieve uri: %s", *payload.URI)
 	// url, err := payload.GetHost()
 
 	// if err != nil {
