@@ -19,7 +19,7 @@ type Contact struct {
 }
 
 type ExchangeConfig struct {
-	Hosts      string `json:"hosts"`
+	URI        string `json:"uri"`
 	Blacklists string `json:"blacklists"`
 	Master     string `json:"master"`
 }
@@ -42,11 +42,11 @@ func Default() *Config {
 		},
 		UserAgent: "prawler",
 		ExchangeName: ExchangeConfig{
-			Hosts:      "prawler.hosts",
+			URI:        "prawler.uri",
 			Blacklists: "prawler.blacklists",
 			Master:     "prawler.master",
 		},
-		QueueName:         "pcrawler.hosts",
+		QueueName:         "prawler.uri",
 		CrawlingDelayInMS: 1000,
 	}
 }

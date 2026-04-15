@@ -30,7 +30,7 @@ func main() {
 
 	defer rabbitMQ.Shutdown()
 
-	broker, err := rabbitMQ.NewBroker(config.ExchangeName.Hosts)
+	broker, err := rabbitMQ.NewBroker(config.ExchangeName.URI)
 
 	if err != nil {
 		log.Fatal(err)

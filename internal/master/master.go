@@ -4,10 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
+	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/puriice/golibs/pkg/messaging"
 	"github.com/purrice/prawler/internal/config"
+	"github.com/purrice/prawler/internal/fetch"
+	"github.com/purrice/prawler/internal/heartbeat"
+	"github.com/purrice/prawler/internal/master/planner"
 	"github.com/purrice/prawler/internal/model"
 	"github.com/purrice/prawler/internal/origin"
 	"github.com/purrice/prawler/internal/repository"
@@ -18,31 +25,54 @@ type MasterConfig struct {
 }
 
 type MasterNode struct {
-	config      *config.Config
-	repo        repository.MasterRepository
-	ctx         context.Context
+	ctx    context.Context
+	config *config.Config
+
+	holter *heartbeat.Holter
+	repo   repository.MasterRepository
+
 	blacklists  *config.Blacklists
-	robotPraser *robots.RobotParser
+	robotParser *robots.RobotParser
+	planner     *planner.Planner
+
+	rabbit *messaging.RabbitMQ
 }
 
 func NewMasterNode(
 	ctx context.Context,
 	db *pgxpool.Pool,
-	robotPraser *robots.RobotParser,
+	rabbit *messaging.RabbitMQ,
 ) MasterNode {
+	fetcher := fetch.NewFecter(nil)
+
 	repo := repository.NewPostgresMasterRepository(db)
+	crawlerRepo := repository.NewPostgresCrawlerRepository(db)
+	robotsRepository := repository.NewPostgresRobotsRepository(db)
 	blacklistRepo := repository.NewPostgresBlacklistRepository(db)
+
+	robotParser := robots.NewRobotParser(robotsRepository, &fetcher)
 	blacklists := config.NewBlacklist(blacklistRepo)
+	holter := heartbeat.NewHolter(ctx, 5*time.Second, 10*time.Second, 2*time.Second, crawlerRepo)
 
 	config := config.GetConfig()
 
 	return MasterNode{
-		config:      config,
-		repo:        repo,
-		ctx:         ctx,
+		ctx:    ctx,
+		config: config,
+
+		holter: holter,
+		repo:   repo,
+
 		blacklists:  blacklists,
-		robotPraser: robotPraser,
+		robotParser: &robotParser,
+		planner:     planner.NewPlanner(),
+
+		rabbit: rabbit,
 	}
+}
+
+func (m *MasterNode) SetupHolter(mux *http.ServeMux) {
+	m.holter.Run(mux)
 }
 
 func (m MasterNode) handleURIRegister(payload model.URIPayload) error {
@@ -58,7 +88,7 @@ func (m MasterNode) handleURIRegister(payload model.URIPayload) error {
 		return nil
 	}
 
-	rbs, err := m.robotPraser.Parse(*url)
+	rbs, err := m.robotParser.Parse(*url)
 
 	if errors.Is(err, robots.ErrNotAllowed) {
 		m.blacklists.Add(origin.String())
@@ -103,4 +133,20 @@ func (m MasterNode) Handle(data []byte) error {
 	}
 
 	return nil
+}
+
+func (m MasterNode) Run() {
+	broker, err := m.rabbit.NewBroker(m.config.ExchangeName.Master)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	listenerConfig := messaging.NewRabbitListenerConfig(m.config.ExchangeName.Master, "prawler.master.*")
+	listener, err := broker.NewListenerWithConfig(listenerConfig)
+
+	log.Println("Start listening to slave producing events.")
+	if err := listener.Subscribe(m.ctx, m.Handle); err != nil {
+		log.Println(err)
+	}
 }

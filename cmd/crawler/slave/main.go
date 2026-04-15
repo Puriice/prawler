@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/url"
 	"os"
@@ -43,13 +44,13 @@ func main() {
 
 	defer rabbitMQ.Shutdown()
 
-	hostBroker, err := rabbitMQ.NewBroker(cfg.ExchangeName.Hosts)
+	hostBroker, err := rabbitMQ.NewBroker(cfg.ExchangeName.URI)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	hostListenerConfig := messaging.NewRabbitListenerConfig(cfg.QueueName, "prawler.seeds")
+	hostListenerConfig := messaging.NewRabbitListenerConfig(cfg.QueueName, fmt.Sprintf("%s.%s", cfg.QueueName, heart.UUID()))
 	hostListener, err := hostBroker.NewListenerWithConfig(hostListenerConfig)
 
 	if err != nil {
