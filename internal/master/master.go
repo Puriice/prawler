@@ -155,7 +155,7 @@ func (m MasterNode) handleURIRegister(payload model.URIPayload) error {
 	event := crawler.Event{
 		Type: crawler.EventURI,
 		Payload: model.URIPayload{
-			URI:       payload.URI,
+			URI:       &normalizedURI,
 			Timestamp: &now,
 		},
 	}
