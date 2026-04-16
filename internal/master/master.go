@@ -17,11 +17,11 @@ import (
 	"github.com/purrice/prawler/internal/crawler"
 	"github.com/purrice/prawler/internal/fetch"
 	"github.com/purrice/prawler/internal/heartbeat"
-	"github.com/purrice/prawler/internal/key"
 	"github.com/purrice/prawler/internal/master/planner"
 	"github.com/purrice/prawler/internal/model"
 	"github.com/purrice/prawler/internal/repository"
 	"github.com/purrice/prawler/internal/robots"
+	"github.com/purrice/prawler/internal/uri"
 )
 
 var (
@@ -112,7 +112,7 @@ func (m MasterNode) handleURIRegister(payload model.URIPayload) error {
 		return nil // Error parsing url return nil because we don't want a retry
 	}
 
-	siteKey := key.SiteKey(*url)
+	siteKey := uri.SiteKey(*url)
 
 	if m.blacklists.Contains(siteKey) {
 		return nil

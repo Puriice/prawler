@@ -4,8 +4,8 @@ import (
 	"net/url"
 	"sync"
 
-	"github.com/purrice/prawler/internal/key"
 	"github.com/purrice/prawler/internal/multikey"
+	"github.com/purrice/prawler/internal/uri"
 )
 
 type Planner struct {
@@ -33,11 +33,11 @@ func (p *Planner) RemoveCrawler(uuid string) {
 	p.register.RemoveByValue(uuid)
 }
 
-func (p *Planner) Plan(uri url.URL) (string, bool) {
+func (p *Planner) Plan(endpoint url.URL) (string, bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	key := key.SiteKey(uri)
+	key := uri.SiteKey(endpoint)
 
 	crawler, ok := p.register.Get(key)
 

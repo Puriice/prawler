@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/jimsmart/grobotstxt"
-	"github.com/purrice/prawler/internal/key"
 	"github.com/purrice/prawler/internal/types"
+	"github.com/purrice/prawler/internal/uri"
 )
 
 const (
@@ -51,7 +51,7 @@ func (r RobotParser) fetchRobots(url url.URL) (*string, error) {
 }
 
 func (r RobotParser) Parse(url url.URL) (*Robots, error) {
-	origin := key.OriginKey(url)
+	origin := uri.OriginKey(url)
 	originString := origin.String()
 
 	if originString == "" {
