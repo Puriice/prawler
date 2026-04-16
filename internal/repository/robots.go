@@ -19,7 +19,7 @@ func NewPostgresRobotsRepository(db *pgxpool.Pool) PostgresRobotsRepository {
 }
 
 func (r PostgresRobotsRepository) AddRobots(context context.Context, host string, raw string) error {
-	cmdTag, err := r.db.Exec(context, "INSERT INTO robots (host, raw_text) VALUES ($1, $2) ON DUPLICATE KEY UPDATE raw_text = $2, updated_at = CURRENT_TIMESTAMP;", host, raw)
+	cmdTag, err := r.db.Exec(context, "INSERT INTO robots (host, raw_text) VALUES ($1, $2) ON CONFLICT(host) DO UPDATE SET raw_text = $2, updated_at = CURRENT_TIMESTAMP;", host, raw)
 
 	if err != nil {
 		return err
