@@ -59,6 +59,13 @@ func NewHolter(
 	return holter
 }
 
+func (h *Holter) Load(fn func() map[string]*Node) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	h.nodes = fn()
+}
+
 func (h *Holter) updateCrawlerStatus(node Node) {
 	err := h.repo.UpdateCrawlerStatus(h.ctx, node.UUID, string(node.Status), node.LastSeen)
 

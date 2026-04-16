@@ -36,16 +36,16 @@ type MasterNode struct {
 	ctx    context.Context
 	config *config.Config
 
-	holter *heartbeat.Holter
-	repo   repository.MasterRepository
+	rabbit *messaging.RabbitMQ
+
+	masterRepository  repository.MasterRepository
+	crawlerRepository repository.CrawlerRepository
 
 	blacklists  *blacklists.Blacklists
 	robotParser *robots.RobotParser
+	holter      *heartbeat.Holter
 	planner     *planner.Planner
-
-	rabbit *messaging.RabbitMQ
-
-	filter Filter
+	filter      Filter
 }
 
 func NewMasterNode(
@@ -71,16 +71,16 @@ func NewMasterNode(
 		ctx:    ctx,
 		config: config,
 
-		holter: holter,
-		repo:   repo,
+		rabbit: rabbit,
+
+		masterRepository:  repo,
+		crawlerRepository: crawlerRepo,
 
 		blacklists:  blacklists,
 		robotParser: &robotParser,
+		holter:      holter,
 		planner:     planner.NewPlanner(),
-
-		rabbit: rabbit,
-
-		filter: filter,
+		filter:      filter,
 	}
 
 	holter.OnChange(master.handleNodeStatusChanges)
@@ -219,6 +219,26 @@ func (m MasterNode) Run() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	crawlers, err := m.crawlerRepository.QueryCrawlerStatus(m.ctx)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	m.holter.Load(func() map[string]*heartbeat.Node {
+		nodes := make(map[string]*heartbeat.Node, len(crawlers))
+
+		for _, crawler := range crawlers {
+			nodes[crawler.UUID] = &heartbeat.Node{
+				UUID:     crawler.UUID,
+				Status:   heartbeat.Status(crawler.Status),
+				LastSeen: crawler.LastSeen,
+			}
+		}
+
+		return nodes
+	})
 
 	listenerConfig := messaging.NewRabbitListenerConfig(m.config.ExchangeName.Master, fmt.Sprintf("%s.#", m.config.ExchangeName.Master))
 	listener, err := broker.NewListenerWithConfig(listenerConfig)

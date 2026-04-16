@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/puriice/golibs/pkg/pgutils"
 )
@@ -16,6 +17,17 @@ func NewPostgresCrawlerRepository(db *pgxpool.Pool) *PostgresCrawlerRepository {
 	return &PostgresCrawlerRepository{
 		db: db,
 	}
+}
+
+func (r *PostgresCrawlerRepository) QueryCrawlerStatus(ctx context.Context) ([]CrawlerStatus, error) {
+	rows, err := r.db.Query(ctx, "SELECT uuid, status, last_seen FROM crawlers")
+
+	if err != nil {
+		return nil, err
+	}
+	crawlers, err := pgx.CollectRows(rows, pgx.RowToStructByName[CrawlerStatus])
+
+	return crawlers, nil
 }
 
 func (r *PostgresCrawlerRepository) UpdateCrawlerStatus(ctx context.Context, uuid string, status string, lastSeen time.Time) error {
