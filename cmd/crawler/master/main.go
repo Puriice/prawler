@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
@@ -14,6 +15,7 @@ import (
 	"github.com/puriice/golibs/pkg/middleware"
 	"github.com/puriice/golibs/pkg/server"
 	"github.com/purrice/prawler/internal/master"
+	"github.com/purrice/prawler/internal/set"
 )
 
 func main() {
@@ -43,7 +45,8 @@ func main() {
 	server := server.NewServer(host, port, nil)
 	mux := http.NewServeMux()
 
-	master := master.NewMasterNode(ctx, db, rabbit)
+	filter := set.NewSet[url.URL]()
+	master := master.NewMasterNode(ctx, db, rabbit, &filter)
 	master.SetupHolter(mux)
 
 	server.Handler = middleware.Logger(mux)

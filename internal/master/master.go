@@ -28,9 +28,10 @@ var (
 	ErrNoAvaliableCrawler = errors.New("No crawler avaliable")
 )
 
-type MasterConfig struct {
+type Filter interface {
+	Add(uri url.URL)
+	Contains(uri url.URL) bool
 }
-
 type MasterNode struct {
 	ctx    context.Context
 	config *config.Config
@@ -43,12 +44,15 @@ type MasterNode struct {
 	planner     *planner.Planner
 
 	rabbit *messaging.RabbitMQ
+
+	filter Filter
 }
 
 func NewMasterNode(
 	ctx context.Context,
 	db *pgxpool.Pool,
 	rabbit *messaging.RabbitMQ,
+	filter Filter,
 ) MasterNode {
 	fetcher := fetch.NewFecter(nil)
 
@@ -75,6 +79,8 @@ func NewMasterNode(
 		planner:     planner.NewPlanner(),
 
 		rabbit: rabbit,
+
+		filter: filter,
 	}
 
 	holter.OnChange(master.handleNodeStatusChanges)
@@ -159,6 +165,11 @@ func (m MasterNode) handleURIRegister(payload model.URIPayload) error {
 	return nil
 }
 
+func (m MasterNode) handleConfirmEvent(payload model.URIPayload) error {
+
+	return nil
+}
+
 func (m MasterNode) Handle(data []byte) error {
 	log.Println("Event Incomming")
 	var event Event
@@ -175,14 +186,16 @@ func (m MasterNode) Handle(data []byte) error {
 		return err
 	}
 
+	if err := event.Payload.IsValid(); err != nil {
+		log.Println(err)
+		return nil
+	}
+
 	switch event.Type {
 	case EventURIRegister:
-		if err := event.Payload.IsValid(); err != nil {
-			log.Println(err)
-			return nil
-		}
-
 		return m.handleURIRegister(event.Payload)
+	case EventCrawlConfirm:
+		return m.handleConfirmEvent(event.Payload)
 	}
 
 	return nil
