@@ -50,6 +50,7 @@ func NewHolter(
 		grace:         timeout + gracePeriod,
 		nodes:         make(map[string]*Node),
 		repo:          repository,
+		queue:         make(chan Event, 1000),
 	}
 
 	holter.onChangeHandler[0] = holter.updateCrawlerStatus
