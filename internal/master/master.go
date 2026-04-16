@@ -112,9 +112,14 @@ func (m MasterNode) handleURIRegister(payload model.URIPayload) error {
 		return nil // Error parsing url return nil because we don't want a retry
 	}
 
+	normalizedURI := uri.Normalize(*url)
 	siteKey := uri.SiteKey(*url)
 
 	if m.blacklists.Contains(siteKey) {
+		return nil
+	}
+
+	if m.filter.Contains(normalizedURI) {
 		return nil
 	}
 
