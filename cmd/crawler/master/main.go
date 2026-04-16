@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
@@ -45,7 +44,7 @@ func main() {
 	server := server.NewServer(host, port, nil)
 	mux := http.NewServeMux()
 
-	filter := set.NewSet[url.URL]()
+	filter := set.NewSet[string]()
 	master := master.NewMasterNode(ctx, db, rabbit, &filter)
 	master.SetupHolter(mux)
 

@@ -29,8 +29,8 @@ var (
 )
 
 type Filter interface {
-	Add(uri url.URL)
-	Contains(uri url.URL) bool
+	Add(uri string)
+	Contains(uri string) bool
 }
 type MasterNode struct {
 	ctx    context.Context
@@ -166,7 +166,14 @@ func (m MasterNode) handleURIRegister(payload model.URIPayload) error {
 }
 
 func (m MasterNode) handleConfirmEvent(payload model.URIPayload) error {
+	url, err := url.Parse(*payload.URI)
 
+	if err != nil {
+		return nil
+	}
+
+	uri := uri.Normalize(*url)
+	m.filter.Add(uri)
 	return nil
 }
 
