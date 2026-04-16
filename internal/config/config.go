@@ -14,8 +14,9 @@ var (
 )
 
 type Contact struct {
-	Email string `json:"email"`
-	Git   string `json:"git"`
+	Email       string `json:"email"`
+	Description string `json:"description"`
+	Git         string `json:"git"`
 }
 
 type ExchangeConfig struct {
@@ -71,5 +72,5 @@ func GetConfig() *Config {
 }
 
 func (c Config) GetDisplayUserAgent() string {
-	return fmt.Sprintf("%s/%f (%s; Email: %s)", c.UserAgent, c.Version, c.Contact.Git, c.Contact.Email)
+	return fmt.Sprintf("%s/%f (%s; %s Email: %s)", c.UserAgent, c.Version, c.Contact.Git, c.Contact.Description, c.Contact.Email)
 }
