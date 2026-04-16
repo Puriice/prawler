@@ -2,8 +2,14 @@ package set
 
 type Set[K comparable] map[K]struct{}
 
-func NewSet[K comparable]() Set[K] {
-	return make(map[K]struct{})
+func NewSet[K comparable](init ...K) Set[K] {
+	set := make(map[K]struct{}, len(init))
+
+	for _, value := range init {
+		set[value] = struct{}{}
+	}
+
+	return set
 }
 
 func (s *Set[K]) Add(value K) {
