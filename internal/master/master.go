@@ -96,6 +96,7 @@ func (m *MasterNode) handleNodeStatusChanges(node heartbeat.Node) {
 
 func (m MasterNode) handleURIRegister(payload model.URIPayload) error {
 	url, err := url.Parse(*payload.URI)
+	log.Printf("RECEIVED: %s\n", *payload.URI)
 
 	if err != nil {
 		return nil // Error parsing url return nil because we don't want a retry
@@ -134,7 +135,10 @@ func (m MasterNode) handleURIRegister(payload model.URIPayload) error {
 
 	now := time.Now()
 
-	err = broker.Publish(fmt.Sprintf("%s.%s", m.config.QueueName, crawler), model.URIPayload{
+	key := fmt.Sprintf("%s.%s", m.config.QueueName, crawler)
+
+	log.Printf("Publishing to: %s", key)
+	err = broker.Publish(key, model.URIPayload{
 		URI:       payload.URI,
 		Timestamp: &now,
 	})
@@ -147,27 +151,32 @@ func (m MasterNode) handleURIRegister(payload model.URIPayload) error {
 }
 
 func (m MasterNode) Handle(data []byte) error {
+	log.Println("Event Incomming")
 	var event Event
 
 	err := json.Unmarshal(data, &event)
 
 	if err != nil {
+		log.Println(err)
 		return err
 	}
 
 	if err := event.IsValid(); err != nil {
+		log.Println(err)
 		return err
 	}
 
 	switch event.Type {
 	case URIRegister:
-		payload, ok := event.Payload.(model.URIPayload)
+		var payload model.URIPayload
 
-		if !ok {
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			log.Println("Bad Payload: ", err)
 			return nil
 		}
 
 		if err := payload.IsValid(); err != nil {
+			log.Println(err)
 			return nil
 		}
 

@@ -51,6 +51,7 @@ func main() {
 	}
 
 	qName := fmt.Sprintf("%s.%s", cfg.QueueName, heart.UUID())
+	log.Printf("Listening to: %s", qName)
 	hostListenerConfig := messaging.NewRabbitListenerConfig(qName, qName)
 	hostListenerConfig.AutoDelete = true
 	hostListenerConfig.Durable = true
