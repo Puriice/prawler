@@ -15,7 +15,7 @@ import (
 type Fetcher struct {
 	client   *http.Client
 	limiters map[string]*rate.Limiter
-	mu       *sync.RWMutex
+	mu       sync.RWMutex
 }
 
 func NewFecter(client *http.Client) Fetcher {
@@ -24,11 +24,12 @@ func NewFecter(client *http.Client) Fetcher {
 	}
 
 	return Fetcher{
-		client: client,
+		client:   client,
+		limiters: make(map[string]*rate.Limiter),
 	}
 }
 
-func (f Fetcher) getLimiter(origin string) *rate.Limiter {
+func (f *Fetcher) getLimiter(origin string) *rate.Limiter {
 	f.mu.RLock()
 	limiter, ok := f.limiters[origin]
 	f.mu.RUnlock()
@@ -47,11 +48,11 @@ func (f Fetcher) getLimiter(origin string) *rate.Limiter {
 	return limiter
 }
 
-func (f Fetcher) Fetch(endpoint url.URL) (*http.Response, error) {
+func (f *Fetcher) Fetch(endpoint url.URL) (*http.Response, error) {
 	return f.FetchWithContext(context.Background(), endpoint)
 }
 
-func (f Fetcher) FetchWithContext(ctx context.Context, endpoint url.URL) (*http.Response, error) {
+func (f *Fetcher) FetchWithContext(ctx context.Context, endpoint url.URL) (*http.Response, error) {
 	config := config.GetConfig()
 	origin := origin.GetOrigin(endpoint)
 

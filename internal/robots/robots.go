@@ -25,5 +25,6 @@ func NewRobotParser(repo repository.RobotsRepository, fetcher *fetch.Fetcher) Ro
 	return RobotParser{
 		repo:    repo,
 		fetcher: fetcher,
+		cache:   make(map[string]Robots),
 	}
 }
