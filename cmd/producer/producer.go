@@ -46,7 +46,7 @@ func main() {
 		}
 
 		event := master.Event{
-			Type:    master.URIRegister,
+			Type:    master.EventURIRegister,
 			Payload: payload,
 		}
 

@@ -3,9 +3,11 @@ package master
 type EventType string
 
 const (
-	URIRegister EventType = "prawler.master.uri"
+	EventURIRegister  EventType = "prawler.master.uri"
+	EventCrawlConfirm EventType = "prawler.master.confirm"
 )
 
 var ValidEventType = []EventType{
-	URIRegister,
+	EventURIRegister,
+	EventCrawlConfirm,
 }

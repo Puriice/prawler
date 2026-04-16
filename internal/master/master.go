@@ -176,7 +176,7 @@ func (m MasterNode) Handle(data []byte) error {
 	}
 
 	switch event.Type {
-	case URIRegister:
+	case EventURIRegister:
 		if err := event.Payload.IsValid(); err != nil {
 			log.Println(err)
 			return nil
