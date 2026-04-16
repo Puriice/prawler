@@ -1,4 +1,4 @@
-package config
+package blacklists
 
 import (
 	"context"
@@ -6,11 +6,8 @@ import (
 	"flag"
 	"sync"
 
-	"github.com/purrice/prawler/internal/enum/hosts"
 	"github.com/purrice/prawler/internal/file"
-	"github.com/purrice/prawler/internal/model"
 	"github.com/purrice/prawler/internal/repository"
-	"github.com/purrice/prawler/internal/types"
 )
 
 type Blacklists struct {
@@ -89,7 +86,7 @@ func (b *Blacklists) Remove(url string) {
 }
 
 func (b *Blacklists) Handle(data []byte) error {
-	var event model.Event
+	var event Event
 
 	err := json.Unmarshal(data, &event)
 
@@ -100,17 +97,16 @@ func (b *Blacklists) Handle(data []byte) error {
 	if err := event.IsValid(); err != nil {
 		return err
 	}
-	payload, ok := event.Payload.(*model.URIPayload)
 
-	if !ok {
-		return types.ErrInvalidPaylod
+	if err := event.Payload.IsValid(); err != nil {
+		return err
 	}
 
-	switch *event.EventType {
-	case hosts.HostBlacklistAdd:
-		b.Add(*payload.URI)
-	case hosts.HostBlacklistRemove:
-		b.Remove(*payload.URI)
+	switch event.Type {
+	case EventBlacklistAdd:
+		b.Add(*event.Payload.URI)
+	case EventBlacklistRemove:
+		b.Remove(*event.Payload.URI)
 	}
 	return nil
 }

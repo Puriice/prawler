@@ -1,10 +1,14 @@
-package master
+package crawler
 
 import (
-	"slices"
-
 	"github.com/purrice/prawler/internal/model"
 	"github.com/purrice/prawler/internal/types"
+)
+
+type EventType string
+
+const (
+	EventURI EventType = "URI"
 )
 
 type Event struct {
@@ -12,9 +16,9 @@ type Event struct {
 	Payload model.URIPayload `json:"payload"`
 }
 
-func (e Event) IsValid() error {
-	if !slices.Contains(ValidEventType, e.Type) {
-		return types.ErrInvalidEventType
+func (s Event) IsValid() error {
+	if s.Type == "" {
+		return types.ErrMissingField
 	}
 
 	return nil

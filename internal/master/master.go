@@ -13,6 +13,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/puriice/golibs/pkg/messaging"
 	"github.com/purrice/prawler/internal/config"
+	"github.com/purrice/prawler/internal/config/blacklists"
+	"github.com/purrice/prawler/internal/crawler"
 	"github.com/purrice/prawler/internal/fetch"
 	"github.com/purrice/prawler/internal/heartbeat"
 	"github.com/purrice/prawler/internal/master/planner"
@@ -36,7 +38,7 @@ type MasterNode struct {
 	holter *heartbeat.Holter
 	repo   repository.MasterRepository
 
-	blacklists  *config.Blacklists
+	blacklists  *blacklists.Blacklists
 	robotParser *robots.RobotParser
 	planner     *planner.Planner
 
@@ -56,7 +58,7 @@ func NewMasterNode(
 	blacklistRepo := repository.NewPostgresBlacklistRepository(db)
 
 	robotParser := robots.NewRobotParser(robotsRepository, &fetcher)
-	blacklists := config.NewBlacklist(blacklistRepo)
+	blacklists := blacklists.NewBlacklist(blacklistRepo)
 	holter := heartbeat.NewHolter(ctx, 5*time.Second, 10*time.Second, 2*time.Second, crawlerRepo)
 
 	config := config.GetConfig()
@@ -88,8 +90,10 @@ func (m *MasterNode) SetupHolter(mux *http.ServeMux) {
 func (m *MasterNode) handleNodeStatusChanges(node heartbeat.Node) {
 	switch node.Status {
 	case heartbeat.Alive:
+		log.Printf("Add %s to the planner.", node.UUID)
 		m.planner.AddCrawler(node.UUID)
 	case heartbeat.Unconscious, heartbeat.Dead:
+		log.Printf("Remove %s from the planner.", node.UUID)
 		m.planner.RemoveCrawler(node.UUID)
 	}
 }
@@ -121,7 +125,7 @@ func (m MasterNode) handleURIRegister(payload model.URIPayload) error {
 		return nil
 	}
 
-	crawler, ok := m.planner.Plan(*url)
+	crawlerUUID, ok := m.planner.Plan(*url)
 
 	if !ok {
 		return ErrNoAvaliableCrawler
@@ -135,13 +139,18 @@ func (m MasterNode) handleURIRegister(payload model.URIPayload) error {
 
 	now := time.Now()
 
-	key := fmt.Sprintf("%s.%s", m.config.QueueName, crawler)
+	key := fmt.Sprintf("%s.%s", m.config.QueueName, crawlerUUID)
+
+	event := crawler.Event{
+		Type: crawler.EventURI,
+		Payload: model.URIPayload{
+			URI:       payload.URI,
+			Timestamp: &now,
+		},
+	}
 
 	log.Printf("Publishing to: %s", key)
-	err = broker.Publish(key, model.URIPayload{
-		URI:       payload.URI,
-		Timestamp: &now,
-	})
+	err = broker.Publish(key, event)
 
 	if err != nil {
 		return err
@@ -168,19 +177,12 @@ func (m MasterNode) Handle(data []byte) error {
 
 	switch event.Type {
 	case URIRegister:
-		var payload model.URIPayload
-
-		if err := json.Unmarshal(event.Payload, &payload); err != nil {
-			log.Println("Bad Payload: ", err)
-			return nil
-		}
-
-		if err := payload.IsValid(); err != nil {
+		if err := event.Payload.IsValid(); err != nil {
 			log.Println(err)
 			return nil
 		}
 
-		return m.handleURIRegister(payload)
+		return m.handleURIRegister(event.Payload)
 	}
 
 	return nil

@@ -40,12 +40,14 @@ func (h *Holter) handleInit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.mu.Lock()
-	h.registerNode(uuid.String())
+	node := h.registerNode(uuid.String())
 	h.mu.Unlock()
 
 	payload := HeartbeatPayload{
 		UUID: uuid.String(),
 	}
+
+	go h.triggerStateChange(*node)
 
 	json.SendJSON(w, 200, payload)
 

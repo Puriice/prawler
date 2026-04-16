@@ -57,17 +57,17 @@ func (r RobotParser) Parse(url url.URL) (*Robots, error) {
 	if origin.String() == "" {
 		return nil, types.ErrUnproccessableInput
 	}
-	log.Printf("Checking if %s/robots.txt cached in local.", originStr)
 	robots, ok := r.cache[originStr]
 
 	if ok && time.Now().Before(robots.Timestamp.AddDate(0, 0, 1)) {
+		log.Printf("Found %s/robots.txt cached in local.", originStr)
 		return &robots, nil
 	}
 
-	log.Printf("Checking if %s/robots.txt cached in database.", originStr)
 	raw, updated_at, err := r.repo.GetRobots(context.Background(), originStr)
 
 	if err == nil && updated_at != nil && time.Now().Before(updated_at.AddDate(0, 0, 1)) {
+		log.Printf("Found %s/robots.txt cached in database.", originStr)
 		robots.Host = origin
 		robots.Raw = raw
 		robots.Sitemap = grobotstxt.Sitemaps(*robots.Raw)

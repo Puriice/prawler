@@ -4,11 +4,9 @@ import (
 	"encoding/json"
 	"log"
 
-	"github.com/purrice/prawler/internal/enum/hosts"
 	"github.com/purrice/prawler/internal/fetch"
 	"github.com/purrice/prawler/internal/model"
 	"github.com/purrice/prawler/internal/repository"
-	"github.com/purrice/prawler/internal/types"
 )
 
 type Crawler struct {
@@ -41,7 +39,7 @@ func (c Crawler) handleProduceEvent(payload model.URIPayload) error {
 }
 
 func (c Crawler) Handle(data []byte) error {
-	var event model.Event
+	var event Event
 
 	err := json.Unmarshal(data, &event)
 
@@ -53,15 +51,9 @@ func (c Crawler) Handle(data []byte) error {
 		return err
 	}
 
-	payload, ok := event.Payload.(*model.URIPayload)
-
-	if !ok {
-		return types.ErrInvalidPaylod
-	}
-
-	switch *event.EventType {
-	case hosts.HostProduced:
-		return c.handleProduceEvent(*payload)
+	switch event.Type {
+	case EventURI:
+		return c.handleProduceEvent(event.Payload)
 
 	}
 	return nil
