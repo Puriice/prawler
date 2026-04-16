@@ -17,9 +17,9 @@ import (
 	"github.com/purrice/prawler/internal/crawler"
 	"github.com/purrice/prawler/internal/fetch"
 	"github.com/purrice/prawler/internal/heartbeat"
+	"github.com/purrice/prawler/internal/key"
 	"github.com/purrice/prawler/internal/master/planner"
 	"github.com/purrice/prawler/internal/model"
-	"github.com/purrice/prawler/internal/origin"
 	"github.com/purrice/prawler/internal/repository"
 	"github.com/purrice/prawler/internal/robots"
 )
@@ -106,16 +106,16 @@ func (m MasterNode) handleURIRegister(payload model.URIPayload) error {
 		return nil // Error parsing url return nil because we don't want a retry
 	}
 
-	origin := origin.GetOrigin(*url)
+	siteKey := key.SiteKey(*url)
 
-	if m.blacklists.Contains(origin.String()) {
+	if m.blacklists.Contains(siteKey) {
 		return nil
 	}
 
 	rbs, err := m.robotParser.Parse(*url)
 
 	if errors.Is(err, robots.ErrNotAllowed) {
-		m.blacklists.Add(origin.String())
+		m.blacklists.Add(siteKey)
 		return nil
 	} else if err != nil {
 		return nil

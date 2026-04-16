@@ -4,18 +4,18 @@ import (
 	"net/url"
 	"sync"
 
+	"github.com/purrice/prawler/internal/key"
 	"github.com/purrice/prawler/internal/multikey"
-	"github.com/purrice/prawler/internal/origin"
 )
 
 type Planner struct {
-	register *multikey.Map[url.URL, string]
+	register *multikey.Map[string, string]
 	mu       sync.Mutex
 }
 
 func NewPlanner() *Planner {
 	return &Planner{
-		register: multikey.New[url.URL, string](),
+		register: multikey.New[string, string](),
 	}
 }
 
@@ -37,9 +37,9 @@ func (p *Planner) Plan(uri url.URL) (string, bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	origin := origin.GetOrigin(uri)
+	key := key.SiteKey(uri)
 
-	crawler, ok := p.register.Get(origin)
+	crawler, ok := p.register.Get(key)
 
 	if ok {
 		return crawler, true
@@ -51,7 +51,7 @@ func (p *Planner) Plan(uri url.URL) (string, bool) {
 		return "", false
 	}
 
-	p.register.Put(origin, crawler)
+	p.register.Put(key, crawler)
 
 	return crawler, true
 }

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/jimsmart/grobotstxt"
-	"github.com/purrice/prawler/internal/origin"
+	"github.com/purrice/prawler/internal/key"
 	"github.com/purrice/prawler/internal/types"
 )
 
@@ -51,52 +51,52 @@ func (r RobotParser) fetchRobots(url url.URL) (*string, error) {
 }
 
 func (r RobotParser) Parse(url url.URL) (*Robots, error) {
-	origin := origin.GetOrigin(url)
-	originStr := origin.String()
+	origin := key.OriginKey(url)
+	originString := origin.String()
 
-	if origin.String() == "" {
+	if originString == "" {
 		return nil, types.ErrUnproccessableInput
 	}
-	robots, ok := r.cache[originStr]
+	robots, ok := r.cache[originString]
 
 	if ok && time.Now().Before(robots.Timestamp.AddDate(0, 0, 1)) {
-		log.Printf("Found %s/robots.txt cached in local.", originStr)
+		log.Printf("Found %s/robots.txt cached in local.", originString)
 		return &robots, nil
 	}
 
-	raw, updated_at, err := r.repo.GetRobots(context.Background(), originStr)
+	raw, updated_at, err := r.repo.GetRobots(context.Background(), originString)
 
 	if err == nil && updated_at != nil && time.Now().Before(updated_at.AddDate(0, 0, 1)) {
-		log.Printf("Found %s/robots.txt cached in database.", originStr)
+		log.Printf("Found %s/robots.txt cached in database.", originString)
 		robots.Host = origin
 		robots.Raw = raw
 		robots.Sitemap = grobotstxt.Sitemaps(*robots.Raw)
 		robots.Timestamp = time.Now()
 
-		r.cache[originStr] = robots
+		r.cache[originString] = robots
 
 		return &robots, nil
 	}
 
-	log.Printf("%s/robots.txt not founded in the database. Try fetching the new one.", originStr)
+	log.Printf("%s/robots.txt not founded in the database. Try fetching the new one.", originString)
 	raw, err = r.fetchRobots(origin)
 
 	if err != nil {
-		log.Printf("Failed to fetch %s/robots.txt", originStr)
+		log.Printf("Failed to fetch %s/robots.txt", originString)
 		return nil, ErrFailedToFetchRobots
 	}
 
 	if raw != nil && *raw != "" {
 		go func() {
-			log.Printf("Saving %s/robots.txt", originStr)
-			err := r.repo.AddRobots(context.Background(), originStr, *raw)
+			log.Printf("Saving %s/robots.txt", originString)
+			err := r.repo.AddRobots(context.Background(), originString, *raw)
 
 			if err != nil {
-				log.Printf("Failed to saved %s/robots.txt. %v", originStr, err)
+				log.Printf("Failed to saved %s/robots.txt. %v", originString, err)
 				return
 			}
 
-			log.Printf("Saved %s/robots.txt", originStr)
+			log.Printf("Saved %s/robots.txt", originString)
 		}()
 	}
 
@@ -105,7 +105,7 @@ func (r RobotParser) Parse(url url.URL) (*Robots, error) {
 	robots.Sitemap = grobotstxt.Sitemaps(*robots.Raw)
 	robots.Timestamp = time.Now()
 
-	r.cache[originStr] = robots
+	r.cache[originString] = robots
 
 	return &robots, nil
 

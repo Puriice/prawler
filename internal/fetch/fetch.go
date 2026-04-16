@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/purrice/prawler/internal/config"
-	"github.com/purrice/prawler/internal/origin"
+	"github.com/purrice/prawler/internal/key"
 	"golang.org/x/time/rate"
 )
 
@@ -54,9 +54,9 @@ func (f *Fetcher) Fetch(endpoint url.URL) (*http.Response, error) {
 
 func (f *Fetcher) FetchWithContext(ctx context.Context, endpoint url.URL) (*http.Response, error) {
 	config := config.GetConfig()
-	origin := origin.GetOrigin(endpoint)
+	key := key.SiteKey(endpoint)
 
-	limiter := f.getLimiter(origin.String())
+	limiter := f.getLimiter(key)
 	limiter.Wait(ctx)
 
 	request, err := http.NewRequest("GET", endpoint.String(), nil)
