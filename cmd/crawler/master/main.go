@@ -13,7 +13,7 @@ import (
 	"github.com/puriice/golibs/pkg/messaging"
 	"github.com/puriice/golibs/pkg/middleware"
 	"github.com/puriice/golibs/pkg/server"
-	"github.com/purrice/prawler/internal/master"
+	"github.com/purrice/prawler/internal/frontier"
 	"github.com/purrice/prawler/internal/set"
 )
 
@@ -45,12 +45,12 @@ func main() {
 	mux := http.NewServeMux()
 
 	filter := set.NewSet[string]()
-	master := master.NewMasterNode(ctx, db, rabbit, &filter)
-	master.SetupHolter(mux)
+	frontier := frontier.NewFrontierNode(ctx, db, rabbit, &filter)
+	frontier.SetupHolter(mux)
 
 	server.Handler = middleware.Logger(mux)
 	server.Start()
 
-	master.Run()
+	frontier.Run()
 	log.Println("Shuting down")
 }

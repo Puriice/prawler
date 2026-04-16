@@ -1,4 +1,4 @@
-package master
+package frontier
 
 import (
 	"encoding/json"

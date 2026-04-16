@@ -8,15 +8,15 @@ import (
 	"github.com/puriice/golibs/pkg/pgutils"
 )
 
-type PostgresMasterRepository struct {
+type PostgresfrontierRepository struct {
 	db *pgxpool.Pool
 }
 
-func NewPostgresMasterRepository(db *pgxpool.Pool) PostgresMasterRepository {
-	return PostgresMasterRepository{db: db}
+func NewPostgresfrontierRepository(db *pgxpool.Pool) PostgresfrontierRepository {
+	return PostgresfrontierRepository{db: db}
 }
 
-func (r PostgresMasterRepository) AddCrawler(context context.Context, uuid string, timestamp time.Time) error {
+func (r PostgresfrontierRepository) AddCrawler(context context.Context, uuid string, timestamp time.Time) error {
 	cmdTag, err := r.db.Exec(context, "INSERT INTO crawlers (uuid, last_beats, created_at) VALUES ($1, $2, $2);", uuid, timestamp)
 
 	if err != nil {

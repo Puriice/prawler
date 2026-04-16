@@ -1,4 +1,4 @@
-package master
+package frontier
 
 import (
 	"context"
@@ -16,8 +16,8 @@ import (
 	"github.com/purrice/prawler/internal/config/blacklists"
 	"github.com/purrice/prawler/internal/crawler"
 	"github.com/purrice/prawler/internal/fetch"
+	"github.com/purrice/prawler/internal/frontier/planner"
 	"github.com/purrice/prawler/internal/heartbeat"
-	"github.com/purrice/prawler/internal/master/planner"
 	"github.com/purrice/prawler/internal/model"
 	"github.com/purrice/prawler/internal/repository"
 	"github.com/purrice/prawler/internal/robots"
@@ -32,14 +32,14 @@ type Filter interface {
 	Add(uri string)
 	Contains(uri string) bool
 }
-type MasterNode struct {
+type FrontierNode struct {
 	ctx    context.Context
 	config *config.Config
 
 	rabbit *messaging.RabbitMQ
 
-	masterRepository  repository.MasterRepository
-	crawlerRepository repository.CrawlerRepository
+	frontierRepository repository.FrontierRepository
+	crawlerRepository  repository.CrawlerRepository
 
 	blacklists  *blacklists.Blacklists
 	robotParser *robots.RobotParser
@@ -48,15 +48,15 @@ type MasterNode struct {
 	filter      Filter
 }
 
-func NewMasterNode(
+func NewFrontierNode(
 	ctx context.Context,
 	db *pgxpool.Pool,
 	rabbit *messaging.RabbitMQ,
 	filter Filter,
-) MasterNode {
+) FrontierNode {
 	fetcher := fetch.NewFecter(nil)
 
-	repo := repository.NewPostgresMasterRepository(db)
+	repo := repository.NewPostgresfrontierRepository(db)
 	crawlerRepo := repository.NewPostgresCrawlerRepository(db)
 	robotsRepository := repository.NewPostgresRobotsRepository(db)
 	blacklistRepo := repository.NewPostgresBlacklistRepository(db)
@@ -67,14 +67,14 @@ func NewMasterNode(
 
 	config := config.GetConfig()
 
-	master := MasterNode{
+	frontier := FrontierNode{
 		ctx:    ctx,
 		config: config,
 
 		rabbit: rabbit,
 
-		masterRepository:  repo,
-		crawlerRepository: crawlerRepo,
+		frontierRepository: repo,
+		crawlerRepository:  crawlerRepo,
 
 		blacklists:  blacklists,
 		robotParser: &robotParser,
@@ -83,17 +83,17 @@ func NewMasterNode(
 		filter:      filter,
 	}
 
-	holter.OnChange(master.handleNodeStatusChanges)
-	holter.OnTimeout(master.handleNodeStatusChanges)
+	holter.OnChange(frontier.handleNodeStatusChanges)
+	holter.OnTimeout(frontier.handleNodeStatusChanges)
 
-	return master
+	return frontier
 }
 
-func (m *MasterNode) SetupHolter(mux *http.ServeMux) {
+func (m *FrontierNode) SetupHolter(mux *http.ServeMux) {
 	m.holter.Run(mux)
 }
 
-func (m *MasterNode) handleNodeStatusChanges(node heartbeat.Node) {
+func (m *FrontierNode) handleNodeStatusChanges(node heartbeat.Node) {
 	switch node.Status {
 	case heartbeat.Alive:
 		log.Printf("Add %s to the planner.", node.UUID)
@@ -104,7 +104,7 @@ func (m *MasterNode) handleNodeStatusChanges(node heartbeat.Node) {
 	}
 }
 
-func (m MasterNode) handleURIRegister(payload model.URIPayload) error {
+func (m FrontierNode) handleURIRegister(payload model.URIPayload) error {
 	url, err := url.Parse(*payload.URI)
 	log.Printf("RECEIVED: %s\n", *payload.URI)
 
@@ -170,7 +170,7 @@ func (m MasterNode) handleURIRegister(payload model.URIPayload) error {
 	return nil
 }
 
-func (m MasterNode) handleConfirmEvent(payload ConfirmPayload) error {
+func (m FrontierNode) handleConfirmEvent(payload ConfirmPayload) error {
 	url, err := url.Parse(*payload.URI)
 
 	if err != nil {
@@ -182,7 +182,7 @@ func (m MasterNode) handleConfirmEvent(payload ConfirmPayload) error {
 	return nil
 }
 
-func (m MasterNode) Handle(data []byte) error {
+func (m FrontierNode) Handle(data []byte) error {
 	log.Println("Event Incomming")
 	var event Event
 
@@ -222,8 +222,8 @@ func (m MasterNode) Handle(data []byte) error {
 	return nil
 }
 
-func (m MasterNode) Run() {
-	broker, err := m.rabbit.NewBroker(m.config.ExchangeName.Master)
+func (m FrontierNode) Run() {
+	broker, err := m.rabbit.NewBroker(m.config.ExchangeName.Frontier)
 
 	if err != nil {
 		log.Fatal(err)
@@ -249,7 +249,7 @@ func (m MasterNode) Run() {
 		return nodes
 	})
 
-	listenerConfig := messaging.NewRabbitListenerConfig(m.config.ExchangeName.Master, fmt.Sprintf("%s.#", m.config.ExchangeName.Master))
+	listenerConfig := messaging.NewRabbitListenerConfig(m.config.ExchangeName.Frontier, fmt.Sprintf("%s.#", m.config.ExchangeName.Frontier))
 	listener, err := broker.NewListenerWithConfig(listenerConfig)
 
 	log.Println("Start listening to slave producing events.")

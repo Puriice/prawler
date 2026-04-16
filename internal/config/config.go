@@ -22,7 +22,7 @@ type Contact struct {
 type ExchangeConfig struct {
 	URI        string `json:"uri"`
 	Blacklists string `json:"blacklists"`
-	Master     string `json:"master"`
+	Frontier   string `json:"frontier"`
 }
 
 type Config struct {
@@ -45,7 +45,7 @@ func Default() *Config {
 		ExchangeName: ExchangeConfig{
 			URI:        "prawler.uri",
 			Blacklists: "prawler.blacklists",
-			Master:     "prawler.master",
+			Frontier:   "prawler.frontier",
 		},
 		QueueName:         "prawler.uri",
 		CrawlingDelayInMS: 1000,

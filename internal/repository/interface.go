@@ -28,6 +28,6 @@ type BlacklistRepository interface {
 	Query(context context.Context) []string
 }
 
-type MasterRepository interface {
+type FrontierRepository interface {
 	AddCrawler(context context.Context, uuid string, timestamp time.Time) error
 }

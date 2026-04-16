@@ -9,7 +9,7 @@ import (
 	"github.com/puriice/golibs/pkg/env"
 	"github.com/puriice/golibs/pkg/messaging"
 	"github.com/purrice/prawler/internal/config"
-	"github.com/purrice/prawler/internal/master"
+	"github.com/purrice/prawler/internal/frontier"
 	"github.com/purrice/prawler/internal/model"
 )
 
@@ -32,7 +32,7 @@ func main() {
 
 	defer rabbitMQ.Shutdown()
 
-	broker, err := rabbitMQ.NewBroker(config.ExchangeName.Master)
+	broker, err := rabbitMQ.NewBroker(config.ExchangeName.Frontier)
 
 	if err != nil {
 		log.Fatal(err)
@@ -53,12 +53,12 @@ func main() {
 			continue
 		}
 
-		event := master.Event{
-			Type:    master.EventURIRegister,
+		event := frontier.Event{
+			Type:    frontier.EventURIRegister,
 			Payload: bytes,
 		}
 
-		err = broker.Publish(fmt.Sprintf("%s.uri", config.ExchangeName.Master), event)
+		err = broker.Publish(fmt.Sprintf("%s.uri", config.ExchangeName.Frontier), event)
 
 		if err != nil {
 			log.Println(err)

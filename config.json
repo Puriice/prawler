@@ -8,7 +8,7 @@
 	"exchange_name": {
 		"uri": "prawler.uri",
 		"blacklists": "prawler.blacklists",
-		"master": "prawler.master"
+		"frontier": "prawler.frontier"
 	},
 	"queue_name": "prawler.uri",
 	"user_agent": "prawler",
