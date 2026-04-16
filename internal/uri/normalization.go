@@ -6,23 +6,31 @@ import (
 	"path"
 	"sort"
 	"strings"
+
+	"github.com/purrice/prawler/internal/set"
 )
 
-var ignoreParams = map[string]bool{
-	"utm_source":   true,
-	"utm_medium":   true,
-	"utm_campaign": true,
-	"utm_term":     true,
-	"utm_content":  true,
-	"session":      true,
-	"ref":          true,
-}
+var ignoreParams = set.NewSet(
+	"utm_source",
+	"utm_medium",
+	"utm_campaign",
+	"utm_term",
+	"session",
+	"ref",
+)
+
+var defaultIndexPath = set.NewSet(
+	"/index.html",
+	"/index.htm",
+	"/index.php",
+	"/index.asp",
+	"/index.aspx",
+)
 
 func Normalize(u url.URL) string {
 	u.Scheme = strings.ToLower(u.Scheme)
 	u.Host = strings.ToLower(u.Host)
 
-	// 2. Remove default ports
 	host, port, err := net.SplitHostPort(u.Host)
 	if err == nil {
 		if (u.Scheme == "http" && port == "80") ||
@@ -31,23 +39,21 @@ func Normalize(u url.URL) string {
 		}
 	}
 
-	// 3. Remove fragment
 	u.Fragment = ""
 
-	// 4. Normalize path
 	u.Path = path.Clean(u.Path)
 
-	// 5. Remove trailing slash (except root)
-	if u.Path != "/" {
+	if defaultIndexPath.Contains(u.Path) {
+		u.Path = "/"
+	} else if u.Path != "/" {
 		u.Path = strings.TrimRight(u.Path, "/")
 	}
 
-	// 6. Normalize query parameters
 	q := u.Query()
 	cleanQ := url.Values{}
 
 	for key, values := range q {
-		if ignoreParams[key] {
+		if ignoreParams.Contains(key) {
 			continue
 		}
 		for _, v := range values {
@@ -55,7 +61,6 @@ func Normalize(u url.URL) string {
 		}
 	}
 
-	// Sort query parameters
 	keys := make([]string, 0, len(cleanQ))
 	for k := range cleanQ {
 		keys = append(keys, k)
