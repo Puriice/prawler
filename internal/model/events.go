@@ -8,7 +8,7 @@ import (
 )
 
 type URIPayload struct {
-	URI       *string    `json:"host,omitempty"`
+	URI       *string    `json:"uri,omitempty"`
 	Depth     int        `json:"depth,omitempty"`
 	Timestamp *time.Time `json:"timestamp,omitempty"`
 }

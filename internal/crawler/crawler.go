@@ -3,6 +3,7 @@ package crawler
 import (
 	"encoding/json"
 	"log"
+	"net/url"
 
 	"github.com/purrice/prawler/internal/fetch"
 	"github.com/purrice/prawler/internal/model"
@@ -29,11 +30,20 @@ func NewCrawler(
 
 func (c Crawler) handleProduceEvent(payload model.URIPayload) error {
 	log.Printf("Recieve uri: %s", *payload.URI)
-	// url, err := payload.GetHost()
+	uri, err := url.Parse(*payload.URI)
 
-	// if err != nil {
-	// 	return err
-	// }
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.fetcher.Fetch(*uri)
+
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	// finalURI := resp.Request.URL
 
 	return nil
 }

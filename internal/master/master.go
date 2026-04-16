@@ -170,7 +170,7 @@ func (m MasterNode) handleURIRegister(payload model.URIPayload) error {
 	return nil
 }
 
-func (m MasterNode) handleConfirmEvent(payload model.URIPayload) error {
+func (m MasterNode) handleConfirmEvent(payload ConfirmPayload) error {
 	url, err := url.Parse(*payload.URI)
 
 	if err != nil {
@@ -198,16 +198,25 @@ func (m MasterNode) Handle(data []byte) error {
 		return err
 	}
 
-	if err := event.Payload.IsValid(); err != nil {
-		log.Println(err)
-		return nil
-	}
-
 	switch event.Type {
 	case EventURIRegister:
-		return m.handleURIRegister(event.Payload)
+		var payload model.URIPayload
+
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			log.Println(err)
+			return nil
+		}
+
+		return m.handleURIRegister(payload)
 	case EventCrawlConfirm:
-		return m.handleConfirmEvent(event.Payload)
+		var payload ConfirmPayload
+
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			log.Println(err)
+			return nil
+		}
+
+		return m.handleConfirmEvent(payload)
 	}
 
 	return nil

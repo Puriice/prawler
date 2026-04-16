@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"time"
@@ -45,12 +46,19 @@ func main() {
 			Timestamp: &now,
 		}
 
-		event := master.Event{
-			Type:    master.EventURIRegister,
-			Payload: payload,
+		bytes, err := json.Marshal(payload)
+
+		if err != nil {
+			log.Println(err)
+			continue
 		}
 
-		err := broker.Publish(fmt.Sprintf("%s.uri", config.ExchangeName.Master), event)
+		event := master.Event{
+			Type:    master.EventURIRegister,
+			Payload: bytes,
+		}
+
+		err = broker.Publish(fmt.Sprintf("%s.uri", config.ExchangeName.Master), event)
 
 		if err != nil {
 			log.Println(err)
