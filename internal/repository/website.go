@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/puriice/golibs/pkg/pgutils"
 	"github.com/purrice/prawler/internal/html"
@@ -134,5 +135,28 @@ func (r PostgresWebsiteRepository) AddPageContent(context context.Context, pageU
 		return pgutils.ErrNoRowsAffected
 	}
 
-	return nil
+	if len(content.Chunks) == 0 {
+		return nil
+	}
+
+	rows := make([][]interface{}, 0, len(content.Chunks))
+
+	for _, chunk := range content.Chunks {
+		rows = append(rows, []interface{}{pageUUID, chunk.Index, chunk.SectionHeading, chunk.Content, chunk.TokenEstimate})
+	}
+
+	r.db.CopyFrom(
+		context,
+		pgx.Identifier([]string{"chunks"}),
+		[]string{
+			"page_uuid",
+			"chunk_index",
+			"section_heading",
+			"content",
+			"token_count",
+		},
+		pgx.CopyFromRows(rows),
+	)
+
+	return err
 }
