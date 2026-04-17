@@ -115,3 +115,24 @@ func (r PostgresWebsiteRepository) AddPageMetadata(context context.Context, page
 
 	return nil
 }
+
+func (r PostgresWebsiteRepository) AddPageContent(context context.Context, pageUUID string, content html.PageContent) error {
+	cmdTag, err := r.db.Exec(
+		context,
+		"INSERT INTO page_metadata (page_uuid, raw_html, extracted_text, word_count) VALUES ($1, $2, $3, $4)",
+		pageUUID,
+		content.RawHTML,
+		content.ExtractedText,
+		content.WordCount,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	if cmdTag.RowsAffected() == 0 {
+		return pgutils.ErrNoRowsAffected
+	}
+
+	return nil
+}

@@ -22,6 +22,8 @@ type WebsiteRepository interface {
 	AddDomain(context context.Context, domain url.URL) error
 	AddRobots(context context.Context, domain url.URL, raw string) error
 	AddPage(context context.Context, url url.URL, depth int, page html.Page) (string, error)
+	AddPageMetadata(context context.Context, pageUUID string, meta html.PageMetaData) error
+	AddPageContent(context context.Context, pageUUID string, content html.PageContent) error
 }
 type BlacklistRepository interface {
 	Query(context context.Context) []string
