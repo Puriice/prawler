@@ -1,16 +1,12 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
 	"log"
-	"time"
 
 	"github.com/puriice/golibs/pkg/env"
 	"github.com/puriice/golibs/pkg/messaging"
 	"github.com/purrice/prawler/internal/config"
 	"github.com/purrice/prawler/internal/frontier"
-	"github.com/purrice/prawler/internal/model"
 )
 
 func main() {
@@ -21,7 +17,6 @@ func main() {
 	}
 
 	env.Init()
-	config := config.GetConfig()
 	amqpURL := env.Get("amqp_url", "amqp://guest:guest@localhost:5672")
 
 	rabbitMQ, err := messaging.NewRabbitMQ(amqpURL)
@@ -32,36 +27,18 @@ func main() {
 
 	defer rabbitMQ.Shutdown()
 
-	broker, err := rabbitMQ.NewBroker(config.ExchangeName.Frontier)
+	client, err := frontier.NewClient(rabbitMQ)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	for _, seed := range seeds {
-		now := time.Now()
-
-		payload := model.URIPayload{
-			URI:       &seed,
-			Timestamp: &now,
-		}
-
-		bytes, err := json.Marshal(payload)
+		err := client.Register(seed)
 
 		if err != nil {
 			log.Println(err)
 			continue
-		}
-
-		event := frontier.Event{
-			Type:    frontier.EventURIRegister,
-			Payload: bytes,
-		}
-
-		err = broker.Publish(fmt.Sprintf("%s.uri", config.ExchangeName.Frontier), event)
-
-		if err != nil {
-			log.Println(err)
 		}
 	}
 }
