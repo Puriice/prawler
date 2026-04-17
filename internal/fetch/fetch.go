@@ -18,12 +18,12 @@ type Fetcher struct {
 	mu       sync.RWMutex
 }
 
-func NewFecter(client *http.Client) Fetcher {
+func NewFecter(client *http.Client) *Fetcher {
 	if client == nil {
 		client = http.DefaultClient
 	}
 
-	return Fetcher{
+	return &Fetcher{
 		client:   client,
 		limiters: make(map[string]*rate.Limiter),
 	}

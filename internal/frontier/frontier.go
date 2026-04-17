@@ -59,7 +59,7 @@ func NewFrontierNode(
 	websiteRepository := repository.NewPostgresWebsiteRepository(db)
 	blacklistRepository := repository.NewPostgresBlacklistRepository(db)
 
-	robotParser := robots.NewRobotParser(websiteRepository, &fetcher)
+	robotParser := robots.NewRobotParser(websiteRepository, fetcher)
 	blacklists := blacklists.NewBlacklist(blacklistRepository)
 	holter := heartbeat.NewHolter(ctx, 5*time.Second, 10*time.Second, 2*time.Second, crawlerRepository)
 

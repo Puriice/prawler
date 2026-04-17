@@ -1,27 +1,33 @@
 package crawler
 
 import (
+	"context"
 	"encoding/json"
 	"log"
+	"net/http"
 	"net/url"
 
 	"github.com/purrice/prawler/internal/events"
-	"github.com/purrice/prawler/internal/fetch"
 	"github.com/purrice/prawler/internal/frontier"
 	"github.com/purrice/prawler/internal/repository"
 )
 
+type Fetcher interface {
+	Fetch(endpoint url.URL) (*http.Response, error)
+	FetchWithContext(ctx context.Context, endpoint url.URL) (*http.Response, error)
+}
+
 type Crawler struct {
 	agent         string
 	webRecordRepo repository.WebsiteRepository
-	fetcher       *fetch.Fetcher
+	fetcher       Fetcher
 	client        frontier.Client
 }
 
 func NewCrawler(
 	userAgent string,
 	webRecordRepo repository.WebsiteRepository,
-	fetcher *fetch.Fetcher,
+	fetcher Fetcher,
 	frontier frontier.Client,
 ) Crawler {
 	return Crawler{
