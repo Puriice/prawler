@@ -31,6 +31,7 @@ func main() {
 	rabbit, err := messaging.NewRabbitMQ(amqpURL)
 
 	if err != nil {
+		db.Close()
 		log.Fatal(err)
 	}
 	defer rabbit.Shutdown()

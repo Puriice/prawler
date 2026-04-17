@@ -1,4 +1,4 @@
-package frontier
+package events
 
 import (
 	"encoding/json"
@@ -8,12 +8,24 @@ import (
 	"github.com/purrice/prawler/internal/types"
 )
 
-type Event struct {
-	Type    EventType       `json:"event_type"`
-	Payload json.RawMessage `json:"payload"`
+type FrontierEventType string
+
+const (
+	FrontierURIRegister  FrontierEventType = "prawler.frontier.uri"
+	FrontierCrawlConfirm FrontierEventType = "prawler.frontier.confirm"
+)
+
+var ValidEventType = []FrontierEventType{
+	FrontierURIRegister,
+	FrontierCrawlConfirm,
 }
 
-func (e Event) IsValid() error {
+type FrontierEvent struct {
+	Type    FrontierEventType `json:"event_type"`
+	Payload json.RawMessage   `json:"payload"`
+}
+
+func (e FrontierEvent) IsValid() error {
 	if !slices.Contains(ValidEventType, e.Type) {
 		return types.ErrInvalidEventType
 	}

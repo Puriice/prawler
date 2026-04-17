@@ -14,11 +14,10 @@ import (
 	"github.com/puriice/golibs/pkg/messaging"
 	"github.com/purrice/prawler/internal/config"
 	"github.com/purrice/prawler/internal/config/blacklists"
-	"github.com/purrice/prawler/internal/crawler"
+	"github.com/purrice/prawler/internal/events"
 	"github.com/purrice/prawler/internal/fetch"
 	"github.com/purrice/prawler/internal/frontier/planner"
 	"github.com/purrice/prawler/internal/heartbeat"
-	"github.com/purrice/prawler/internal/model"
 	"github.com/purrice/prawler/internal/repository"
 	"github.com/purrice/prawler/internal/robots"
 	"github.com/purrice/prawler/internal/uri"
@@ -56,7 +55,7 @@ func NewFrontierNode(
 ) FrontierNode {
 	fetcher := fetch.NewFecter(nil)
 
-	repo := repository.NewPostgresfrontierRepository(db)
+	repo := repository.NewPostgresFrontierRepository(db)
 	crawlerRepo := repository.NewPostgresCrawlerRepository(db)
 	robotsRepository := repository.NewPostgresRobotsRepository(db)
 	blacklistRepo := repository.NewPostgresBlacklistRepository(db)
@@ -104,7 +103,7 @@ func (m *FrontierNode) handleNodeStatusChanges(node heartbeat.Node) {
 	}
 }
 
-func (m FrontierNode) handleURIRegister(payload model.URIPayload) error {
+func (m FrontierNode) handleURIRegister(payload events.URIPayload) error {
 	url, err := url.Parse(*payload.URI)
 	log.Printf("RECEIVED: %s\n", *payload.URI)
 
@@ -152,9 +151,9 @@ func (m FrontierNode) handleURIRegister(payload model.URIPayload) error {
 
 	key := fmt.Sprintf("%s.%s", m.config.QueueName, crawlerUUID)
 
-	event := crawler.Event{
-		Type: crawler.EventURI,
-		Payload: model.URIPayload{
+	event := events.CrawlEvent{
+		Type: events.CrawlURI,
+		Payload: events.URIPayload{
 			URI:       &normalizedURI,
 			Timestamp: &now,
 		},
@@ -170,7 +169,7 @@ func (m FrontierNode) handleURIRegister(payload model.URIPayload) error {
 	return nil
 }
 
-func (m FrontierNode) handleConfirmEvent(payload ConfirmPayload) error {
+func (m FrontierNode) handleConfirmEvent(payload events.ConfirmPayload) error {
 	url, err := url.Parse(*payload.URI)
 
 	if err != nil {
@@ -184,7 +183,7 @@ func (m FrontierNode) handleConfirmEvent(payload ConfirmPayload) error {
 
 func (m FrontierNode) Handle(data []byte) error {
 	log.Println("Event Incomming")
-	var event Event
+	var event events.FrontierEvent
 
 	err := json.Unmarshal(data, &event)
 
@@ -199,8 +198,8 @@ func (m FrontierNode) Handle(data []byte) error {
 	}
 
 	switch event.Type {
-	case EventURIRegister:
-		var payload model.URIPayload
+	case events.FrontierURIRegister:
+		var payload events.URIPayload
 
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
 			log.Println(err)
@@ -208,8 +207,8 @@ func (m FrontierNode) Handle(data []byte) error {
 		}
 
 		return m.handleURIRegister(payload)
-	case EventCrawlConfirm:
-		var payload ConfirmPayload
+	case events.FrontierCrawlConfirm:
+		var payload events.ConfirmPayload
 
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
 			log.Println(err)

@@ -15,6 +15,7 @@ import (
 	"github.com/purrice/prawler/internal/config"
 	"github.com/purrice/prawler/internal/crawler"
 	"github.com/purrice/prawler/internal/fetch"
+	"github.com/purrice/prawler/internal/frontier"
 	"github.com/purrice/prawler/internal/heartbeat"
 	"github.com/purrice/prawler/internal/repository"
 )
@@ -47,6 +48,7 @@ func main() {
 	hostBroker, err := rabbitMQ.NewBroker(cfg.ExchangeName.URI)
 
 	if err != nil {
+		rabbitMQ.Shutdown()
 		log.Fatal(err)
 	}
 
@@ -59,12 +61,14 @@ func main() {
 	hostListener, err := hostBroker.NewListenerWithConfig(hostListenerConfig)
 
 	if err != nil {
+		rabbitMQ.Shutdown()
 		log.Fatal(err)
 	}
 
 	db, err := db.NewDatabase()
 
 	if err != nil {
+		rabbitMQ.Shutdown()
 		log.Fatal(err)
 	}
 
@@ -73,8 +77,15 @@ func main() {
 	webRecordsRepository := repository.NewPostgresWebRecordRepository(db)
 
 	fetcher := fetch.NewFecter(nil)
+	client, err := frontier.NewClient(rabbitMQ)
 
-	crawler := crawler.NewCrawler(cfg.UserAgent, webRecordsRepository, &fetcher)
+	if err != nil {
+		rabbitMQ.Shutdown()
+		db.Close()
+		log.Fatal(err)
+	}
+
+	crawler := crawler.NewCrawler(cfg.UserAgent, webRecordsRepository, &fetcher, client)
 
 	log.Println("Start listening to hosts producing events.")
 	if err := hostListener.Subscribe(ctx, crawler.Handle); err != nil {

@@ -6,6 +6,7 @@ import (
 	"flag"
 	"sync"
 
+	"github.com/purrice/prawler/internal/events"
 	"github.com/purrice/prawler/internal/file"
 	"github.com/purrice/prawler/internal/repository"
 )
@@ -86,7 +87,7 @@ func (b *Blacklists) Remove(url string) {
 }
 
 func (b *Blacklists) Handle(data []byte) error {
-	var event Event
+	var event events.BlacklistEvent
 
 	err := json.Unmarshal(data, &event)
 
@@ -103,9 +104,9 @@ func (b *Blacklists) Handle(data []byte) error {
 	}
 
 	switch event.Type {
-	case EventBlacklistAdd:
+	case events.BlacklistAdd:
 		b.Add(*event.Payload.URI)
-	case EventBlacklistRemove:
+	case events.BlacklistRemove:
 		b.Remove(*event.Payload.URI)
 	}
 	return nil

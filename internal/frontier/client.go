@@ -7,7 +7,7 @@ import (
 
 	"github.com/puriice/golibs/pkg/messaging"
 	"github.com/purrice/prawler/internal/config"
-	"github.com/purrice/prawler/internal/model"
+	"github.com/purrice/prawler/internal/events"
 )
 
 type keys struct {
@@ -40,7 +40,7 @@ func NewClient(rabbit *messaging.RabbitMQ) (Client, error) {
 func (c Client) Register(uri string) error {
 	now := time.Now()
 
-	payload := model.URIPayload{
+	payload := events.URIPayload{
 		URI:       &uri,
 		Timestamp: &now,
 	}
@@ -51,8 +51,8 @@ func (c Client) Register(uri string) error {
 		return err
 	}
 
-	return c.broker.Publish(c.keys.Register, Event{
-		Type:    EventURIRegister,
+	return c.broker.Publish(c.keys.Register, events.FrontierEvent{
+		Type:    events.FrontierURIRegister,
 		Payload: bytes,
 	})
 }
@@ -63,7 +63,7 @@ func (c Client) ConfirmCrawled(
 	canonical string,
 	depth int,
 ) error {
-	payload := ConfirmPayload{
+	payload := events.ConfirmPayload{
 		URI:       &original,
 		FinalURI:  &final,
 		Canonical: &canonical,
@@ -79,8 +79,8 @@ func (c Client) ConfirmCrawled(
 		return err
 	}
 
-	return c.broker.Publish(c.keys.Register, Event{
-		Type:    EventCrawlConfirm,
+	return c.broker.Publish(c.keys.Register, events.FrontierEvent{
+		Type:    events.FrontierCrawlConfirm,
 		Payload: bytes,
 	})
 }
