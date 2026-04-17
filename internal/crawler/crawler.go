@@ -11,6 +11,7 @@ import (
 	"github.com/purrice/prawler/internal/frontier"
 	"github.com/purrice/prawler/internal/html"
 	"github.com/purrice/prawler/internal/repository"
+	"github.com/purrice/prawler/internal/worker"
 )
 
 type Fetcher interface {
@@ -24,6 +25,7 @@ type Crawler struct {
 	websiteRepository repository.WebsiteRepository
 	fetcher           Fetcher
 	client            frontier.Client
+	worker            *worker.WorkerManager
 }
 
 func NewCrawler(
@@ -32,6 +34,7 @@ func NewCrawler(
 	webRecordRepo repository.WebsiteRepository,
 	fetcher Fetcher,
 	frontier frontier.Client,
+	worker *worker.WorkerManager,
 ) Crawler {
 	return Crawler{
 		ctx:               ctx,
@@ -39,6 +42,7 @@ func NewCrawler(
 		websiteRepository: webRecordRepo,
 		fetcher:           fetcher,
 		client:            frontier,
+		worker:            worker,
 	}
 }
 

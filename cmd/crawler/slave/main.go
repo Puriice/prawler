@@ -18,6 +18,7 @@ import (
 	"github.com/purrice/prawler/internal/frontier"
 	"github.com/purrice/prawler/internal/heartbeat"
 	"github.com/purrice/prawler/internal/repository"
+	"github.com/purrice/prawler/internal/worker"
 )
 
 func main() {
@@ -85,7 +86,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	crawler := crawler.NewCrawler(ctx, cfg.UserAgent, webRecordsRepository, fetcher, client)
+	worker := worker.NewManager(ctx, 3)
+	worker.SpawnWorker()
+
+	crawler := crawler.NewCrawler(ctx, cfg.UserAgent, webRecordsRepository, fetcher, client, worker)
 
 	log.Println("Start listening to hosts producing events.")
 	if err := hostListener.Subscribe(ctx, crawler.Handle); err != nil {

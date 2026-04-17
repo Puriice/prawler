@@ -15,48 +15,48 @@ var (
 	ErrMaximumWorkerCapacity = errors.New("Worker had reached maximum capacity.")
 )
 
-type WorkerID int
-type WorkID int
+type workerID int
+type workID int
 
 type Work func()
 
-type Event struct {
-	WorkID WorkID
+type event struct {
+	WorkID workID
 	Work   Work
 }
 
 type WorkerManager struct {
 	ctx     context.Context
-	workers map[WorkerID]chan Event
-	planner *planner.Planner[WorkID, WorkerID]
+	workers map[workerID]chan event
+	planner *planner.Planner[workID, workerID]
 
 	mu sync.Mutex
 
-	currentWorkId WorkID
+	currentWorkId workID
 }
 
 func NewManager(ctx context.Context, workerCount int) *WorkerManager {
 	manager := &WorkerManager{
 		ctx:           ctx,
-		workers:       make(map[WorkerID]chan Event, workerCount),
-		planner:       planner.NewPlanner[WorkID, WorkerID](),
-		currentWorkId: WorkID(1),
+		workers:       make(map[workerID]chan event, workerCount),
+		planner:       planner.NewPlanner[workID, workerID](),
+		currentWorkId: workID(1),
 	}
 
 	for i := range workerCount {
-		manager.workers[WorkerID(i)] = make(chan Event, 1000)
+		manager.workers[workerID(i)] = make(chan event, 1000)
 	}
 
 	return manager
 }
 
-func (m *WorkerManager) confirmWork(workId WorkID) {
+func (m *WorkerManager) confirmWork(workId workID) {
 	m.planner.Done(workId)
 }
 
 func (m *WorkerManager) SpawnWorker() {
-	for workerId, event := range m.workers {
-		go func(workerId WorkerID, event chan Event) {
+	for workerId, queue := range m.workers {
+		go func(workerId workerID, queue chan event) {
 			defer func() {
 				if r := recover(); r != nil {
 					log.Printf("[WORKER ID: %d] panic: %v\n", workerId, r)
@@ -65,11 +65,11 @@ func (m *WorkerManager) SpawnWorker() {
 
 			select {
 			case <-m.ctx.Done():
-			case e := <-event:
+			case e := <-queue:
 				e.Work()
 				m.confirmWork(e.WorkID)
 			}
-		}(workerId, event)
+		}(workerId, queue)
 
 		m.planner.AddResource(workerId)
 	}
@@ -82,7 +82,7 @@ func (m *WorkerManager) Assign(work Work) error {
 	workID := m.currentWorkId
 	m.currentWorkId++
 
-	event := Event{
+	e := event{
 		WorkID: workID,
 		Work:   work,
 	}
@@ -93,17 +93,17 @@ func (m *WorkerManager) Assign(work Work) error {
 		return ErrNoAvaliableWorker
 	}
 
-	e, ok := m.workers[workerID]
+	queue, ok := m.workers[workerID]
 
 	if !ok {
 		return ErrWorkerNotExist
 	}
 
 	select {
-	case e <- event:
+	case queue <- e:
 	default:
 		// queue full → drop or log
-		log.Println("⚠️ Work dropped:", event.WorkID, event.Work)
+		log.Println("⚠️ Work dropped:", e.WorkID, e.Work)
 		return ErrMaximumWorkerCapacity
 	}
 
