@@ -1,0 +1,15 @@
+-- +goose Up
+SELECT 'up SQL query';
+CREATE TABLE robots (
+	uuid 		UUID,
+	raw_text	TEXT NOT NULL,
+	updated_at	TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	created_at	TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	
+	PRIMARY KEY(uuid),
+	FOREIGN KEY(uuid) REFERENCES domains(uuid) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+-- +goose Down
+SELECT 'down SQL query';
+DROP TABLE robots;
