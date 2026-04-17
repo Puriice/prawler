@@ -14,6 +14,7 @@ import (
 	"github.com/puriice/golibs/pkg/middleware"
 	"github.com/puriice/golibs/pkg/server"
 	"github.com/purrice/prawler/internal/frontier"
+	"github.com/purrice/prawler/internal/repository"
 	"github.com/purrice/prawler/internal/set"
 )
 
@@ -45,8 +46,17 @@ func main() {
 	server := server.NewServer(host, port, nil)
 	mux := http.NewServeMux()
 
+	crawlerRepository := repository.NewPostgresCrawlerRepository(db)
+	websiteRepository := repository.NewPostgresWebsiteRepository(db)
+	blacklistRepository := repository.NewPostgresBlacklistRepository(db)
+
 	filter := set.NewSet[string]()
-	frontier := frontier.NewFrontierNode(ctx, db, rabbit, &filter)
+	frontier := frontier.NewFrontierNode(ctx, rabbit, &filter)
+	frontier.Setup(
+		crawlerRepository,
+		websiteRepository,
+		blacklistRepository,
+	)
 	frontier.SetupHolter(mux)
 
 	server.Handler = middleware.Logger(mux)

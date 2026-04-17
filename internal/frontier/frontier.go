@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/puriice/golibs/pkg/messaging"
 	"github.com/purrice/prawler/internal/config"
 	"github.com/purrice/prawler/internal/config/blacklists"
@@ -49,42 +48,36 @@ type FrontierNode struct {
 
 func NewFrontierNode(
 	ctx context.Context,
-	db *pgxpool.Pool,
 	rabbit *messaging.RabbitMQ,
 	filter Filter,
-) FrontierNode {
-	fetcher := fetch.NewFecter(nil)
-
-	crawlerRepository := repository.NewPostgresCrawlerRepository(db)
-	websiteRepository := repository.NewPostgresWebsiteRepository(db)
-	blacklistRepository := repository.NewPostgresBlacklistRepository(db)
-
-	robotParser := robots.NewRobotParser(websiteRepository, fetcher)
-	blacklists := blacklists.NewBlacklist(blacklistRepository)
-	holter := heartbeat.NewHolter(ctx, 5*time.Second, 10*time.Second, 2*time.Second, crawlerRepository)
-
-	config := config.GetConfig()
-
-	frontier := FrontierNode{
+) *FrontierNode {
+	return &FrontierNode{
 		ctx:    ctx,
-		config: config,
+		config: config.GetConfig(),
 
-		rabbit: rabbit,
-
-		crawlerRepository: crawlerRepository,
-		websiteRepository: websiteRepository,
-
-		blacklists:  blacklists,
-		robotParser: &robotParser,
-		holter:      holter,
-		planner:     planner.NewPlanner[string, string](),
-		filter:      filter,
+		rabbit:  rabbit,
+		planner: planner.NewPlanner[string, string](),
+		filter:  filter,
 	}
+}
 
-	holter.OnChange(frontier.handleNodeStatusChanges)
-	holter.OnTimeout(frontier.handleNodeStatusChanges)
+func (m *FrontierNode) Setup(
+	crawlerRepository repository.CrawlerRepository,
+	websiteRepository repository.WebsiteRepository,
+	blacklistRepository repository.BlacklistRepository,
+) {
+	robotParser := robots.NewRobotParser(websiteRepository, fetch.NewFecter(nil))
+	blacklists := blacklists.NewBlacklist(blacklistRepository)
 
-	return frontier
+	holter := heartbeat.NewHolter(m.ctx, 5*time.Second, 10*time.Second, 2*time.Second, crawlerRepository)
+	holter.OnChange(m.handleNodeStatusChanges)
+	holter.OnTimeout(m.handleNodeStatusChanges)
+
+	m.crawlerRepository = crawlerRepository
+	m.websiteRepository = websiteRepository
+
+	m.blacklists = blacklists
+	m.robotParser = &robotParser
 }
 
 func (m *FrontierNode) SetupHolter(mux *http.ServeMux) {
