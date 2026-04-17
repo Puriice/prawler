@@ -37,8 +37,8 @@ type FrontierNode struct {
 
 	rabbit *messaging.RabbitMQ
 
-	frontierRepository repository.FrontierRepository
-	crawlerRepository  repository.CrawlerRepository
+	websiteRepository repository.WebsiteRepository
+	crawlerRepository repository.CrawlerRepository
 
 	blacklists  *blacklists.Blacklists
 	robotParser *robots.RobotParser
@@ -55,14 +55,13 @@ func NewFrontierNode(
 ) FrontierNode {
 	fetcher := fetch.NewFecter(nil)
 
-	repo := repository.NewPostgresFrontierRepository(db)
-	crawlerRepo := repository.NewPostgresCrawlerRepository(db)
-	robotsRepository := repository.NewPostgresRobotsRepository(db)
-	blacklistRepo := repository.NewPostgresBlacklistRepository(db)
+	crawlerRepository := repository.NewPostgresCrawlerRepository(db)
+	websiteRepository := repository.NewPostgresWebsiteRepository(db)
+	blacklistRepository := repository.NewPostgresBlacklistRepository(db)
 
-	robotParser := robots.NewRobotParser(robotsRepository, &fetcher)
-	blacklists := blacklists.NewBlacklist(blacklistRepo)
-	holter := heartbeat.NewHolter(ctx, 5*time.Second, 10*time.Second, 2*time.Second, crawlerRepo)
+	robotParser := robots.NewRobotParser(websiteRepository, &fetcher)
+	blacklists := blacklists.NewBlacklist(blacklistRepository)
+	holter := heartbeat.NewHolter(ctx, 5*time.Second, 10*time.Second, 2*time.Second, crawlerRepository)
 
 	config := config.GetConfig()
 
@@ -72,8 +71,8 @@ func NewFrontierNode(
 
 		rabbit: rabbit,
 
-		frontierRepository: repo,
-		crawlerRepository:  crawlerRepo,
+		crawlerRepository: crawlerRepository,
+		websiteRepository: websiteRepository,
 
 		blacklists:  blacklists,
 		robotParser: &robotParser,
@@ -111,8 +110,11 @@ func (m FrontierNode) handleURIRegister(payload events.URIPayload) error {
 		return nil // Error parsing url return nil because we don't want a retry
 	}
 
+	origin := uri.OriginKey(*url)
 	normalizedURI := uri.Normalize(*url)
 	siteKey := uri.SiteKey(*url)
+
+	m.websiteRepository.AddDomain(m.ctx, origin)
 
 	if m.blacklists.Contains(siteKey) {
 		return nil

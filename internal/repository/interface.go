@@ -2,32 +2,23 @@ package repository
 
 import (
 	"context"
+	"net/url"
 	"time"
 )
 
 type CrawlerRepository interface {
 	QueryCrawlerStatus(ctx context.Context) ([]CrawlerStatus, error)
+	AddCrawler(context context.Context, uuid string, timestamp time.Time) error
 	UpdateCrawlerStatus(ctx context.Context, uuid string, status string, lastSeen time.Time) error
 	RemoveCrawler(ctx context.Context, uuid string) error
 }
 
-type RobotsRepository interface {
-	AddRobots(context context.Context, host string, raw string) error
-	GetRobots(context context.Context, host string) (*string, *time.Time, error)
-}
-
-type WebRecordRepository interface {
-	AddWebsite(context context.Context) error
-}
-
-type WebInfoRepository interface {
-	AddInfo(context context.Context) error
+type WebsiteRepository interface {
+	AddDomain(context context.Context, domain url.URL) error
+	AddRobots(context context.Context, domain url.URL, raw string) error
+	GetRobots(context context.Context, domain url.URL) (*string, *time.Time, error)
 }
 
 type BlacklistRepository interface {
 	Query(context context.Context) []string
-}
-
-type FrontierRepository interface {
-	AddCrawler(context context.Context, uuid string, timestamp time.Time) error
 }

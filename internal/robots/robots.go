@@ -16,12 +16,12 @@ type Robots struct {
 }
 
 type RobotParser struct {
-	repo    repository.RobotsRepository
+	repo    repository.WebsiteRepository
 	fetcher *fetch.Fetcher
 	cache   map[string]Robots
 }
 
-func NewRobotParser(repo repository.RobotsRepository, fetcher *fetch.Fetcher) RobotParser {
+func NewRobotParser(repo repository.WebsiteRepository, fetcher *fetch.Fetcher) RobotParser {
 	return RobotParser{
 		repo:    repo,
 		fetcher: fetcher,

@@ -74,7 +74,7 @@ func main() {
 
 	defer db.Close()
 
-	webRecordsRepository := repository.NewPostgresWebRecordRepository(db)
+	webRecordsRepository := repository.NewPostgresWebsiteRepository(db)
 
 	fetcher := fetch.NewFecter(nil)
 	client, err := frontier.NewClient(rabbitMQ)

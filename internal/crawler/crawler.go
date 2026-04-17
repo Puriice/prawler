@@ -13,14 +13,14 @@ import (
 
 type Crawler struct {
 	agent         string
-	webRecordRepo repository.WebRecordRepository
+	webRecordRepo repository.WebsiteRepository
 	fetcher       *fetch.Fetcher
 	client        frontier.Client
 }
 
 func NewCrawler(
 	userAgent string,
-	webRecordRepo repository.WebRecordRepository,
+	webRecordRepo repository.WebsiteRepository,
 	fetcher *fetch.Fetcher,
 	frontier frontier.Client,
 ) Crawler {

@@ -64,7 +64,7 @@ func (r RobotParser) Parse(url url.URL) (*Robots, error) {
 		return &robots, nil
 	}
 
-	raw, updated_at, err := r.repo.GetRobots(context.Background(), originString)
+	raw, updated_at, err := r.repo.GetRobots(context.Background(), origin)
 
 	if err == nil && updated_at != nil && time.Now().Before(updated_at.AddDate(0, 0, 1)) {
 		log.Printf("Found %s/robots.txt cached in database.", originString)
@@ -89,7 +89,7 @@ func (r RobotParser) Parse(url url.URL) (*Robots, error) {
 	if raw != nil && *raw != "" {
 		go func() {
 			log.Printf("Saving %s/robots.txt", originString)
-			err := r.repo.AddRobots(context.Background(), originString, *raw)
+			err := r.repo.AddRobots(context.Background(), origin, *raw)
 
 			if err != nil {
 				log.Printf("Failed to saved %s/robots.txt. %v", originString, err)
