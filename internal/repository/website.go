@@ -17,6 +17,19 @@ func NewPostgresWebsiteRepository(db *pgxpool.Pool) PostgresWebsiteRepository {
 	return PostgresWebsiteRepository{db: db}
 }
 
+func (r PostgresWebsiteRepository) GetRobots(context context.Context, domain url.URL) (*string, *time.Time, error) {
+	var raw string
+	var timestamp time.Time
+
+	err := r.db.QueryRow(context, "SELECT r.raw_text, r.updated_at FROM robots r LEFT JOIN domains d WHERE d.scheme = $1 AND d.host = $2 AND d.port = $3", domain.Scheme, domain.Hostname(), domain.Port()).Scan(&raw, &timestamp)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &raw, &timestamp, nil
+}
+
 func (r PostgresWebsiteRepository) AddDomain(context context.Context, domain url.URL) error {
 	_, err := r.db.Exec(context, "INSERT INTO domains (scheme, host, port) VALUES ($1, $2, $3) ON CONFLICT (scheme, host, port) DO NOTHING", domain.Scheme, domain.Hostname(), domain.Port())
 
@@ -49,15 +62,33 @@ func (r PostgresWebsiteRepository) AddRobots(context context.Context, domains ur
 	return nil
 }
 
-func (r PostgresWebsiteRepository) GetRobots(context context.Context, domain url.URL) (*string, *time.Time, error) {
-	var raw string
-	var timestamp time.Time
-
-	err := r.db.QueryRow(context, "SELECT r.raw_text, r.updated_at FROM robots r LEFT JOIN domains d WHERE d.scheme = $1 AND d.host = $2 AND d.port = $3", domain.Scheme, domain.Hostname(), domain.Port()).Scan(&raw, &timestamp)
+func (r PostgresWebsiteRepository) AddPage(
+	context context.Context,
+	domain url.URL,
+	url string,
+	canonical_url string,
+	depth int,
+	indexable bool,
+	checksum string,
+) (string, error) {
+	domainUUID, err := queryDomainUUID(context, r.db, domain)
 
 	if err != nil {
-		return nil, nil, err
+		return "", err
 	}
 
-	return &raw, &timestamp, nil
+	var uuid string
+
+	err = r.db.QueryRow(
+		context,
+		"INSERT INTO pages (domain_uuid, url, canonical_url, depth, indexable, checksum) VALUES ($1, $2, $3, $4, $5, $6) RETURNING uuid",
+		domainUUID,
+		url,
+		canonical_url,
+		depth,
+		indexable,
+		checksum,
+	).Scan(&uuid)
+
+	return uuid, err
 }

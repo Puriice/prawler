@@ -15,9 +15,11 @@ type CrawlerRepository interface {
 }
 
 type WebsiteRepository interface {
+	GetRobots(context context.Context, domain url.URL) (*string, *time.Time, error)
+
 	AddDomain(context context.Context, domain url.URL) error
 	AddRobots(context context.Context, domain url.URL, raw string) error
-	GetRobots(context context.Context, domain url.URL) (*string, *time.Time, error)
+	AddPage(context context.Context, domain url.URL, url string, canonical_url string, depth int, indexable bool, checksum string) (string, error)
 }
 
 type BlacklistRepository interface {
