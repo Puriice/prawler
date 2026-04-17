@@ -1,57 +1,61 @@
 package planner
 
 import (
-	"net/url"
 	"sync"
 
 	"github.com/purrice/prawler/internal/multikey"
-	"github.com/purrice/prawler/internal/uri"
 )
 
-type Planner struct {
-	register *multikey.Map[string, string]
+type Planner[K comparable, V comparable] struct {
+	register *multikey.Map[K, V]
 	mu       sync.Mutex
 }
 
-func NewPlanner() *Planner {
-	return &Planner{
-		register: multikey.New[string, string](),
+func NewPlanner[K comparable, V comparable]() *Planner[K, V] {
+	return &Planner[K, V]{
+		register: multikey.New[K, V](),
 	}
 }
 
-func (p *Planner) AddCrawler(uuid string) {
+func (p *Planner[K, V]) AddResource(uuid V) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
 	p.register.AddValue(uuid)
 }
 
-func (p *Planner) RemoveCrawler(uuid string) {
+func (p *Planner[K, V]) RemoveResource(uuid V) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
 	p.register.RemoveByValue(uuid)
 }
 
-func (p *Planner) Plan(endpoint url.URL) (string, bool) {
+func (p *Planner[K, V]) Plan(key K) (V, bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	key := uri.SiteKey(endpoint)
-
-	crawler, ok := p.register.Get(key)
+	resource, ok := p.register.Get(key)
 
 	if ok {
-		return crawler, true
+		return resource, true
 	}
 
-	crawler, ok = p.register.GetValueWithLeastKey()
+	resource, ok = p.register.GetValueWithLeastKey()
 
 	if !ok {
-		return "", false
+		var zero V
+		return zero, false
 	}
 
-	p.register.Put(key, crawler)
+	p.register.Put(key, resource)
 
-	return crawler, true
+	return resource, true
+}
+
+func (p *Planner[K, V]) Done(key K) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	p.register.RemoveByKey(key)
 }

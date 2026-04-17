@@ -43,7 +43,7 @@ type FrontierNode struct {
 	blacklists  *blacklists.Blacklists
 	robotParser *robots.RobotParser
 	holter      *heartbeat.Holter
-	planner     *planner.Planner
+	planner     *planner.Planner[string, string]
 	filter      Filter
 }
 
@@ -77,7 +77,7 @@ func NewFrontierNode(
 		blacklists:  blacklists,
 		robotParser: &robotParser,
 		holter:      holter,
-		planner:     planner.NewPlanner(),
+		planner:     planner.NewPlanner[string, string](),
 		filter:      filter,
 	}
 
@@ -95,10 +95,10 @@ func (m *FrontierNode) handleNodeStatusChanges(node heartbeat.Node) {
 	switch node.Status {
 	case heartbeat.Alive:
 		log.Printf("Add %s to the planner.", node.UUID)
-		m.planner.AddCrawler(node.UUID)
+		m.planner.AddResource(node.UUID)
 	case heartbeat.Unconscious, heartbeat.Dead:
 		log.Printf("Remove %s from the planner.", node.UUID)
-		m.planner.RemoveCrawler(node.UUID)
+		m.planner.RemoveResource(node.UUID)
 	}
 }
 
@@ -137,7 +137,7 @@ func (m FrontierNode) handleURIRegister(payload events.URIPayload) error {
 		return nil
 	}
 
-	crawlerUUID, ok := m.planner.Plan(*url)
+	crawlerUUID, ok := m.planner.Plan(siteKey)
 
 	if !ok {
 		return ErrNoAvaliableCrawler

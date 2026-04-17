@@ -107,7 +107,7 @@ func (c Crawler) Handle(data []byte) error {
 
 	switch event.Type {
 	case events.CrawlURI:
-		return c.handleProduceEvent(event.Payload)
+		go c.handleProduceEvent(event.Payload)
 
 	}
 	return nil
