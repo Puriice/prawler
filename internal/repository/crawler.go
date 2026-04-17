@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"net/url"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -67,6 +68,22 @@ func (r *PostgresCrawlerRepository) RemoveCrawler(ctx context.Context, uuid stri
 
 	if cmdTag.RowsAffected() != 1 {
 		return pgutils.ErrNoRowsAffected
+	}
+
+	return nil
+}
+
+func (r *PostgresCrawlerRepository) AssignJob(ctx context.Context, crawlerUUID string, domain url.URL) error {
+	domainUUID, err := queryDomainUUID(ctx, r.db, domain)
+
+	if err != nil {
+		return err
+	}
+
+	_, err = r.db.Exec(ctx, "INSERT INTO crawler_jobs (crawler_uuid, domain_uuid) VALUES ($1, $2) ON CONFLICT(domain_uuid) UPDATE SET crawler_uuid = $1;", crawlerUUID, domainUUID)
+
+	if err != nil {
+		return err
 	}
 
 	return nil

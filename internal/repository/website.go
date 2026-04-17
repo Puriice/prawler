@@ -30,7 +30,7 @@ func (r PostgresWebsiteRepository) AddDomain(context context.Context, domain url
 func (r PostgresWebsiteRepository) AddRobots(context context.Context, domains url.URL, raw string) error {
 	var uuid string
 
-	err := r.db.QueryRow(context, "SELECT uuid FROM domains WHERE scheme = $1 AND host = $2 AND port = $3", domains.Scheme, domains.Hostname(), domains.Port()).Scan(&uuid)
+	uuid, err := queryDomainUUID(context, r.db, domains)
 
 	if err != nil {
 		return err

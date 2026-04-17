@@ -11,6 +11,7 @@ type CrawlerRepository interface {
 	AddCrawler(context context.Context, uuid string, timestamp time.Time) error
 	UpdateCrawlerStatus(ctx context.Context, uuid string, status string, lastSeen time.Time) error
 	RemoveCrawler(ctx context.Context, uuid string) error
+	AssignJob(ctx context.Context, crawlerUUID string, domain url.URL) error
 }
 
 type WebsiteRepository interface {
