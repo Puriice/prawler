@@ -9,6 +9,7 @@ import (
 
 	"github.com/purrice/prawler/internal/events"
 	"github.com/purrice/prawler/internal/frontier"
+	"github.com/purrice/prawler/internal/html"
 	"github.com/purrice/prawler/internal/repository"
 )
 
@@ -18,23 +19,26 @@ type Fetcher interface {
 }
 
 type Crawler struct {
-	agent         string
-	webRecordRepo repository.WebsiteRepository
-	fetcher       Fetcher
-	client        frontier.Client
+	ctx               context.Context
+	agent             string
+	websiteRepository repository.WebsiteRepository
+	fetcher           Fetcher
+	client            frontier.Client
 }
 
 func NewCrawler(
+	ctx context.Context,
 	userAgent string,
 	webRecordRepo repository.WebsiteRepository,
 	fetcher Fetcher,
 	frontier frontier.Client,
 ) Crawler {
 	return Crawler{
-		agent:         userAgent,
-		webRecordRepo: webRecordRepo,
-		fetcher:       fetcher,
-		client:        frontier,
+		ctx:               ctx,
+		agent:             userAgent,
+		websiteRepository: webRecordRepo,
+		fetcher:           fetcher,
+		client:            frontier,
 	}
 }
 
@@ -53,7 +57,37 @@ func (c Crawler) handleProduceEvent(payload events.URIPayload) error {
 	}
 	defer resp.Body.Close()
 
-	// finalURI := resp.Request.URL
+	finalURI := resp.Request.URL
+
+	parser, err := html.NewParser(finalURI.String())
+
+	if err != nil {
+		return err
+	}
+
+	meta, page, content, err := parser.ParseReader(resp.Body)
+
+	if err != nil {
+		return err
+	}
+
+	pageUUID, err := c.websiteRepository.AddPage(c.ctx, *finalURI, payload.Depth, *page)
+
+	if err != nil {
+		return err
+	}
+
+	err = c.websiteRepository.AddPageMetadata(c.ctx, pageUUID, *meta)
+
+	if err != nil {
+		return err
+	}
+
+	err = c.websiteRepository.AddPageContent(c.ctx, pageUUID, *content)
+
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

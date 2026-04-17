@@ -85,7 +85,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	crawler := crawler.NewCrawler(cfg.UserAgent, webRecordsRepository, fetcher, client)
+	crawler := crawler.NewCrawler(ctx, cfg.UserAgent, webRecordsRepository, fetcher, client)
 
 	log.Println("Start listening to hosts producing events.")
 	if err := hostListener.Subscribe(ctx, crawler.Handle); err != nil {
