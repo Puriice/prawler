@@ -112,7 +112,11 @@ func (c Crawler) Handle(data []byte) error {
 	switch event.Type {
 	case events.CrawlURI:
 		c.worker.Assign(func() {
-			c.handleCrawlEvent(event.Payload)
+			err := c.handleCrawlEvent(event.Payload)
+
+			if err != nil {
+				log.Println(err)
+			}
 		})
 
 	}

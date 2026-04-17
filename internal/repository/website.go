@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
+	"log"
 	"net/url"
 	"time"
 
@@ -82,12 +84,19 @@ func (r PostgresWebsiteRepository) AddPage(
 
 	err = r.db.QueryRow(
 		context,
-		"INSERT INTO pages (domain_uuid, url, canonical_url, depth, indexable, checksum) VALUES ($1, $2, $3, $4, $5, $6) RETURNING uuid",
+		`
+		INSERT INTO pages (domain_uuid, url, canonical_url, depth, indexable, checksum) 
+		VALUES ($1, $2, $3, $4, $5, $6) 
+		ON CONFLICT (domain_uuid, url)
+		DO UPDATE SET
+			domain_uuid = pages.domain_uuid
+		RETURNING uuid
+		`,
 		domainUUID,
-		url,
+		url.String(),
 		page.CanonicalURL,
 		depth,
-		page.NoIndex,
+		!page.NoIndex,
 		page.Checksum,
 	).Scan(&uuid)
 
@@ -95,32 +104,61 @@ func (r PostgresWebsiteRepository) AddPage(
 }
 
 func (r PostgresWebsiteRepository) AddPageMetadata(context context.Context, pageUUID string, meta html.PageMetaData) error {
-	cmdTag, err := r.db.Exec(
+	var schemaOrgJSON []byte
+	var schemaObjs []json.RawMessage
+
+	if len(meta.SchemaOrg) > 0 {
+		for _, blob := range meta.SchemaOrg {
+			var raw json.RawMessage
+
+			if err := json.Unmarshal([]byte(blob), &raw); err != nil {
+				continue
+			}
+			schemaObjs = append(schemaObjs, raw)
+		}
+
+	}
+
+	schemaOrgJSON, err := json.Marshal(schemaObjs)
+
+	if err != nil {
+		log.Printf("[WARN] Error marshal schema org json: %v", err)
+	}
+
+	_, err = r.db.Exec(
 		context,
-		"INSERT INTO page_metadata (page_uuid, title, language, description, author, published_at, schema_org) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+		`
+		INSERT INTO page_metadata (page_uuid, title, language, description, author, published_at, schema_org) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7) 
+		ON CONFLICT (page_uuid) 
+		DO UPDATE SET 
+			title = $2,
+			language = $3,
+			description = $4,
+			author = $5,
+			published_at = $6,
+			schema_org = $7;
+		`,
 		pageUUID,
+		meta.Title,
 		meta.Language,
 		meta.MetaDescription,
 		meta.Author,
 		meta.PublishedAt,
-		meta.SchemaOrg,
+		schemaOrgJSON,
 	)
 
 	if err != nil {
 		return err
 	}
 
-	if cmdTag.RowsAffected() == 0 {
-		return pgutils.ErrNoRowsAffected
-	}
-
 	return nil
 }
 
 func (r PostgresWebsiteRepository) AddPageContent(context context.Context, pageUUID string, content html.PageContent) error {
-	cmdTag, err := r.db.Exec(
+	_, err := r.db.Exec(
 		context,
-		"INSERT INTO page_metadata (page_uuid, raw_html, extracted_text, word_count) VALUES ($1, $2, $3, $4)",
+		"INSERT INTO page_content (page_uuid, raw_html, extracted_text, word_count) VALUES ($1, $2, $3, $4)",
 		pageUUID,
 		content.RawHTML,
 		content.ExtractedText,
@@ -131,18 +169,14 @@ func (r PostgresWebsiteRepository) AddPageContent(context context.Context, pageU
 		return err
 	}
 
-	if cmdTag.RowsAffected() == 0 {
-		return pgutils.ErrNoRowsAffected
-	}
-
 	if len(content.Chunks) == 0 {
 		return nil
 	}
 
-	rows := make([][]interface{}, 0, len(content.Chunks))
+	rows := make([][]any, 0, len(content.Chunks))
 
 	for _, chunk := range content.Chunks {
-		rows = append(rows, []interface{}{pageUUID, chunk.Index, chunk.SectionHeading, chunk.Content, chunk.TokenEstimate})
+		rows = append(rows, []any{pageUUID, chunk.Index, chunk.SectionHeading, chunk.Content, chunk.TokenEstimate})
 	}
 
 	r.db.CopyFrom(

@@ -80,7 +80,7 @@ func (r *PostgresCrawlerRepository) AssignJob(ctx context.Context, crawlerUUID s
 		return err
 	}
 
-	_, err = r.db.Exec(ctx, "INSERT INTO crawler_jobs (crawler_uuid, domain_uuid) VALUES ($1, $2) ON CONFLICT(domain_uuid) UPDATE SET crawler_uuid = $1;", crawlerUUID, domainUUID)
+	_, err = r.db.Exec(ctx, "INSERT INTO crawler_jobs (crawler_uuid, domain_uuid) VALUES ($1, $2) ON CONFLICT(domain_uuid) DO UPDATE SET crawler_uuid = $1;", crawlerUUID, domainUUID)
 
 	if err != nil {
 		return err
