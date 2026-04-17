@@ -46,7 +46,7 @@ func NewCrawler(
 	}
 }
 
-func (c Crawler) handleProduceEvent(payload events.URIPayload) error {
+func (c Crawler) handleCrawlEvent(payload events.URIPayload) error {
 	log.Printf("Recieve uri: %s", *payload.URI)
 	uri, err := url.Parse(*payload.URI)
 
@@ -111,7 +111,9 @@ func (c Crawler) Handle(data []byte) error {
 
 	switch event.Type {
 	case events.CrawlURI:
-		go c.handleProduceEvent(event.Payload)
+		c.worker.Assign(func() {
+			c.handleCrawlEvent(event.Payload)
+		})
 
 	}
 	return nil
