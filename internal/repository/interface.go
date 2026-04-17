@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/url"
 	"time"
+
+	"github.com/purrice/prawler/internal/html"
 )
 
 type CrawlerRepository interface {
@@ -19,9 +21,8 @@ type WebsiteRepository interface {
 
 	AddDomain(context context.Context, domain url.URL) error
 	AddRobots(context context.Context, domain url.URL, raw string) error
-	AddPage(context context.Context, domain url.URL, url string, canonical_url string, depth int, indexable bool, checksum string) (string, error)
+	AddPage(context context.Context, url url.URL, depth int, page html.Page) (string, error)
 }
-
 type BlacklistRepository interface {
 	Query(context context.Context) []string
 }

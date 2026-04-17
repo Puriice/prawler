@@ -13,32 +13,39 @@ import (
 	"golang.org/x/net/html"
 )
 
-// ParsedPage holds everything extracted from a raw HTML page.
-type ParsedPage struct {
-	// Metadata
+// parsedPage holds everything extracted from a raw HTML page.
+type parsedPage struct {
+	PageMetaData
+	Page
+	PageContent
+}
+
+type PageMetaData struct {
 	Title           string
+	Language        string
 	MetaDescription string
 	OGTitle         string
 	OGDescription   string
 	OGImage         string
 	Author          string
-	Language        string
 	PublishedAt     *time.Time
 	SchemaOrg       []string // raw JSON-LD blobs
+}
 
-	// Crawl signals
+type Page struct {
 	CanonicalURL string
 	NoIndex      bool
 	NoFollow     bool
 	Checksum     string // SHA-256 of extracted text
 
-	// Content
+	Links []Link
+}
+
+type PageContent struct {
+	RawHTML       string
 	ExtractedText string
 	WordCount     int
 	Chunks        []Chunk
-
-	// Links
-	Links []Link
 }
 
 // Chunk is one embeddable section of the page.
@@ -78,13 +85,13 @@ func NewParser(rawURL string) (*Parser, error) {
 }
 
 // Parse is the main entry point. Pass the raw HTML as a string.
-func (p *Parser) Parse(rawHTML string) (*ParsedPage, error) {
+func (p *Parser) Parse(rawHTML string) (*PageMetaData, *Page, *PageContent, error) {
 	doc, err := html.Parse(strings.NewReader(rawHTML))
 	if err != nil {
-		return nil, fmt.Errorf("html parse error: %w", err)
+		return nil, nil, nil, fmt.Errorf("html parse error: %w", err)
 	}
 
-	page := &ParsedPage{}
+	page := &parsedPage{}
 
 	// 1. metadata from <head>
 	p.extractHead(doc, page)
@@ -114,14 +121,14 @@ func (p *Parser) Parse(rawHTML string) (*ParsedPage, error) {
 	// 5. outbound links for URL frontier
 	page.Links = p.extractLinks(doc)
 
-	return page, nil
+	return &page.PageMetaData, &page.Page, &page.PageContent, nil
 }
 
 // ParseReader is a convenience wrapper if you have an io.Reader.
-func (p *Parser) ParseReader(r io.Reader) (*ParsedPage, error) {
+func (p *Parser) ParseReader(r io.Reader) (*PageMetaData, *Page, *PageContent, error) {
 	b, err := io.ReadAll(r)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 	return p.Parse(string(b))
 }
@@ -130,7 +137,7 @@ func (p *Parser) ParseReader(r io.Reader) (*ParsedPage, error) {
 // Head extraction
 // --------------------------------------------------------------------------
 
-func (p *Parser) extractHead(doc *html.Node, page *ParsedPage) {
+func (p *Parser) extractHead(doc *html.Node, page *parsedPage) {
 	var walk func(*html.Node)
 	walk = func(n *html.Node) {
 		if n.Type == html.ElementNode {
@@ -166,7 +173,7 @@ func (p *Parser) extractHead(doc *html.Node, page *ParsedPage) {
 	}
 }
 
-func (p *Parser) handleMeta(n *html.Node, page *ParsedPage) {
+func (p *Parser) handleMeta(n *html.Node, page *parsedPage) {
 	name := strings.ToLower(attr(n, "name"))
 	prop := strings.ToLower(attr(n, "property"))
 	content := attr(n, "content")

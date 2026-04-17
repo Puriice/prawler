@@ -7,6 +7,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/puriice/golibs/pkg/pgutils"
+	"github.com/purrice/prawler/internal/html"
+	"github.com/purrice/prawler/internal/uri"
 )
 
 type PostgresWebsiteRepository struct {
@@ -64,14 +66,12 @@ func (r PostgresWebsiteRepository) AddRobots(context context.Context, domains ur
 
 func (r PostgresWebsiteRepository) AddPage(
 	context context.Context,
-	domain url.URL,
-	url string,
-	canonical_url string,
+	url url.URL,
 	depth int,
-	indexable bool,
-	checksum string,
+	page html.Page,
 ) (string, error) {
-	domainUUID, err := queryDomainUUID(context, r.db, domain)
+	origin := uri.OriginKey(url)
+	domainUUID, err := queryDomainUUID(context, r.db, origin)
 
 	if err != nil {
 		return "", err
@@ -84,11 +84,34 @@ func (r PostgresWebsiteRepository) AddPage(
 		"INSERT INTO pages (domain_uuid, url, canonical_url, depth, indexable, checksum) VALUES ($1, $2, $3, $4, $5, $6) RETURNING uuid",
 		domainUUID,
 		url,
-		canonical_url,
+		page.CanonicalURL,
 		depth,
-		indexable,
-		checksum,
+		page.NoIndex,
+		page.Checksum,
 	).Scan(&uuid)
 
 	return uuid, err
+}
+
+func (r PostgresWebsiteRepository) AddPageMetadata(context context.Context, pageUUID string, meta html.PageMetaData) error {
+	cmdTag, err := r.db.Exec(
+		context,
+		"INSERT INTO page_metadata (page_uuid, title, language, description, author, published_at, schema_org) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+		pageUUID,
+		meta.Language,
+		meta.MetaDescription,
+		meta.Author,
+		meta.PublishedAt,
+		meta.SchemaOrg,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	if cmdTag.RowsAffected() == 0 {
+		return pgutils.ErrNoRowsAffected
+	}
+
+	return nil
 }
