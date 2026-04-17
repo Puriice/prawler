@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/url"
 	"time"
@@ -20,6 +21,41 @@ type PostgresWebsiteRepository struct {
 
 func NewPostgresWebsiteRepository(db *pgxpool.Pool) PostgresWebsiteRepository {
 	return PostgresWebsiteRepository{db: db}
+}
+
+func (r PostgresWebsiteRepository) GetBlacklistDomain(context context.Context) []string {
+	rows, err := r.db.Query(context, "SELECT scheme, host, port FROM domains WHERE crawl_allowed = false")
+
+	if err != nil {
+		return []string{}
+	}
+	defer rows.Close()
+
+	var blacklists []string
+
+	for rows.Next() {
+		var scheme, host, port string
+
+		if err := rows.Scan(&scheme, &host, &port); err != nil {
+			continue
+		}
+
+		url, err := url.Parse(fmt.Sprintf("%s://%s:%s", scheme, host, port))
+
+		if err != nil {
+			continue
+		}
+
+		sitekey := uri.SiteKey(*url)
+
+		blacklists = append(blacklists, sitekey)
+	}
+
+	if rows.Err() != nil {
+		return []string{}
+	}
+
+	return blacklists
 }
 
 func (r PostgresWebsiteRepository) GetRobots(context context.Context, domain url.URL) (*string, *time.Time, error) {

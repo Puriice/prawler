@@ -14,7 +14,7 @@ import (
 type Blacklists struct {
 	mu   sync.RWMutex
 	sets map[string]struct{}
-	repo repository.BlacklistRepository
+	repo repository.WebsiteRepository
 }
 
 var (
@@ -22,14 +22,14 @@ var (
 	blacklist Blacklists
 )
 
-func initBlacklist(repo repository.BlacklistRepository) {
+func initBlacklist(repo repository.WebsiteRepository) {
 	blacklistPath := flag.String("blacklist", "./blacklists.json", "Path for blacklists file")
 	flag.Parse()
 
 	var fromJson []string
 
 	err := file.LoadJson(*blacklistPath, &fromJson)
-	fromDatabase := repo.Query(context.Background())
+	fromDatabase := repo.GetBlacklistDomain(context.Background())
 
 	if err != nil {
 		fromJson = []string{}
@@ -53,7 +53,7 @@ func initBlacklist(repo repository.BlacklistRepository) {
 	}
 }
 
-func NewBlacklist(repo repository.BlacklistRepository) *Blacklists {
+func NewBlacklist(repo repository.WebsiteRepository) *Blacklists {
 	once.Do(func() {
 		initBlacklist(repo)
 	})

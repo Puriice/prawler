@@ -48,14 +48,12 @@ func main() {
 
 	crawlerRepository := repository.NewPostgresCrawlerRepository(db)
 	websiteRepository := repository.NewPostgresWebsiteRepository(db)
-	blacklistRepository := repository.NewPostgresBlacklistRepository(db)
 
 	filter := set.NewSet[string]()
 	frontier := frontier.NewFrontierNode(ctx, rabbit, &filter)
 	frontier.Setup(
 		crawlerRepository,
 		websiteRepository,
-		blacklistRepository,
 	)
 	frontier.SetupHolter(mux)
 

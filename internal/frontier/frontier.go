@@ -64,10 +64,9 @@ func NewFrontierNode(
 func (m *FrontierNode) Setup(
 	crawlerRepository repository.CrawlerRepository,
 	websiteRepository repository.WebsiteRepository,
-	blacklistRepository repository.BlacklistRepository,
 ) {
 	robotParser := robots.NewRobotParser(websiteRepository, fetch.NewFecter(nil))
-	blacklists := blacklists.NewBlacklist(blacklistRepository)
+	blacklists := blacklists.NewBlacklist(websiteRepository)
 
 	holter := heartbeat.NewHolter(m.ctx, 5*time.Second, 10*time.Second, 2*time.Second, crawlerRepository)
 	holter.OnChange(m.handleNodeStatusChanges)

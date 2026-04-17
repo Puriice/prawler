@@ -26,6 +26,7 @@ func (r *PostgresCrawlerRepository) QueryCrawlerStatus(ctx context.Context) ([]C
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 	crawlers, err := pgx.CollectRows(rows, pgx.RowToStructByName[CrawlerStatus])
 
 	return crawlers, nil

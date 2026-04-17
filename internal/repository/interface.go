@@ -17,6 +17,7 @@ type CrawlerRepository interface {
 }
 
 type WebsiteRepository interface {
+	GetBlacklistDomain(context context.Context) []string
 	GetRobots(context context.Context, domain url.URL) (*string, *time.Time, error)
 
 	AddDomain(context context.Context, domain url.URL) error
@@ -24,7 +25,4 @@ type WebsiteRepository interface {
 	AddPage(context context.Context, url url.URL, depth int, page html.Page) (string, error)
 	AddPageMetadata(context context.Context, pageUUID string, meta html.PageMetaData) error
 	AddPageContent(context context.Context, pageUUID string, content html.PageContent) error
-}
-type BlacklistRepository interface {
-	Query(context context.Context) []string
 }
