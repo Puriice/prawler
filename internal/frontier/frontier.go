@@ -21,6 +21,7 @@ import (
 	"github.com/purrice/prawler/internal/repository"
 	"github.com/purrice/prawler/internal/robots"
 	"github.com/purrice/prawler/internal/uri"
+	"github.com/purrice/prawler/internal/worker"
 )
 
 var (
@@ -45,6 +46,8 @@ type FrontierNode struct {
 	holter      *heartbeat.Holter
 	planner     *planner.Planner[string, string]
 	filter      Filter
+
+	worker *worker.WorkerManager
 }
 
 func NewFrontierNode(
@@ -59,6 +62,8 @@ func NewFrontierNode(
 		rabbit:  rabbit,
 		planner: planner.NewPlanner[string, string](),
 		filter:  filter,
+
+		worker: worker.NewManager(ctx, 2),
 	}
 }
 
@@ -78,6 +83,8 @@ func (m *FrontierNode) Setup(
 
 	m.blacklists = blacklists
 	m.robotParser = &robotParser
+
+	m.worker.SpawnWorker()
 }
 
 func (m *FrontierNode) SetupHolter(mux *http.ServeMux) {
@@ -208,7 +215,11 @@ func (m FrontierNode) Handle(data []byte) error {
 			return nil
 		}
 
-		return m.handleURIRegister(payload)
+		m.worker.Assign(func() {
+			if err := m.handleURIRegister(payload); err != nil {
+				log.Println(err)
+			}
+		})
 	case events.FrontierCrawlConfirm:
 		var payload events.ConfirmPayload
 
@@ -217,7 +228,11 @@ func (m FrontierNode) Handle(data []byte) error {
 			return nil
 		}
 
-		return m.handleConfirmEvent(payload)
+		m.worker.Assign(func() {
+			if err := m.handleConfirmEvent(payload); err != nil {
+				log.Println(err)
+			}
+		})
 	}
 
 	return nil
