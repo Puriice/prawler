@@ -72,7 +72,7 @@ func (r PostgresWebsiteRepository) GetRobots(context context.Context, domain url
 	return &raw, &timestamp, nil
 }
 
-func (r PostgresWebsiteRepository) GetParsedPage(context context.Context) []Page {
+func (r PostgresWebsiteRepository) GetFinishedPage(context context.Context) []Page {
 	rows, err := r.db.Query(
 		context,
 		`
@@ -83,7 +83,7 @@ func (r PostgresWebsiteRepository) GetParsedPage(context context.Context) []Page
 			depth,
 			checksum
 		FROM pages
-		WHERE status = "Parsed" OR status = "Indexed"
+		WHERE status = "Parsed" OR status = "Indexed" OR status = "Skipped"
 		`,
 	)
 

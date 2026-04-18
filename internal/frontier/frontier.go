@@ -89,7 +89,7 @@ func (m *FrontierNode) Setup(
 
 	m.worker.SpawnWorker()
 
-	pages := websiteRepository.GetParsedPage(m.ctx)
+	pages := websiteRepository.GetFinishedPage(m.ctx)
 
 	for _, page := range pages {
 		m.addFilter(page.URL)
