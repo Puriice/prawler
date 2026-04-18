@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/puriice/golibs/pkg/messaging"
@@ -23,6 +24,7 @@ import (
 	"github.com/purrice/prawler/internal/robots"
 	"github.com/purrice/prawler/internal/uri"
 	"github.com/purrice/prawler/internal/worker"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 var (
@@ -94,6 +96,36 @@ func (m *FrontierNode) Setup(
 	for _, page := range pages {
 		m.addFilter(page.URL)
 		m.addFilter(page.CanonicalURL)
+	}
+
+	err := m.rabbit.Channel.ExchangeDeclare(
+		m.config.ExchangeName.Backoff,
+		"direct",
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+
+	key := fmt.Sprintf("%s.uri", m.config.ExchangeName.Frontier)
+
+	args := amqp.Table{
+		"x-dead-letter-exchange":    m.config.ExchangeName.Frontier,
+		"x-dead-letter-routing-key": key,
+	}
+
+	_, err = m.rabbit.Channel.QueueDeclare(
+		m.config.ExchangeName.Backoff,
+		true,
+		false,
+		false,
+		false,
+		args,
+	)
+
+	if err != nil {
+		log.Println(err)
 	}
 }
 
@@ -201,6 +233,59 @@ func (m FrontierNode) addFilter(u string) {
 	m.filter.Add(normalized)
 }
 
+func (m FrontierNode) backingOff(p events.BackoffPayload) error {
+	url, err := url.Parse(*p.URI)
+
+	if err != nil {
+		return err
+	}
+
+	sitekey := uri.SiteKey(*url)
+
+	if m.backoff.Attempt(sitekey) > m.config.CrawlingPolicy.MaximumCrawlingAttempt {
+		m.blacklists.Add(sitekey)
+	} else {
+		delay := m.backoff.Add(sitekey, p.HTTPStatus, p.RetryAfter)
+		now := time.Now()
+
+		payloadBody := events.URIPayload{
+			URI:       p.URI,
+			Depth:     p.Depth,
+			Timestamp: &now,
+		}
+
+		bytes, err := json.Marshal(payloadBody)
+
+		if err != nil {
+			return err
+		}
+
+		payload := events.FrontierEvent{
+			Type:    events.FrontierURIRegister,
+			Payload: bytes,
+		}
+
+		body, err := json.Marshal(payload)
+		if err != nil {
+			return err
+		}
+
+		m.rabbit.Channel.Publish(
+			m.config.ExchangeName.Backoff,
+			m.config.ExchangeName.Backoff,
+			false,
+			false,
+			amqp.Publishing{
+				ContentType: "application/json",
+				Body:        body,
+				Expiration:  strconv.FormatInt(delay.Milliseconds(), 10),
+			},
+		)
+	}
+
+	return nil
+}
+
 func (m FrontierNode) handleConfirmEvent(payload events.ConfirmPayload) error {
 	url, err := url.Parse(*payload.URI)
 
@@ -221,30 +306,27 @@ func (m FrontierNode) handleConfirmEvent(payload events.ConfirmPayload) error {
 		m.addFilter(*payload.Canonical)
 		m.addFilter(*payload.FinalURI)
 	case &enum.Page.Failed:
-		if m.backoff.Attempt(sitekey) > m.config.CrawlingPolicy.MaximumCrawlingAttempt {
-			m.blacklists.Add(sitekey)
-		} else {
-			m.backoff.Add(sitekey, payload.HTTPStatus, 0)
-		}
+		m.backingOff(
+			events.BackoffPayload{
+				PageUUID: payload.PageUUID,
+				Depth:    payload.Depth,
+
+				URI:        payload.FinalURI,
+				HTTPStatus: payload.HTTPStatus,
+				RetryAfter: 0,
+
+				Timestamp: payload.Timestamp,
+			},
+		)
 	}
 
 	return nil
 }
 
 func (m FrontierNode) handleBackoffEvent(payload events.BackoffPayload) error {
-	url, err := url.Parse(*payload.URI)
+	m.websiteRepository.SetPageStatus(m.ctx, *payload.PageUUID, enum.Page.Failed)
 
-	if err != nil {
-		return nil
-	}
-
-	sitekey := uri.SiteKey(*url)
-
-	if m.backoff.Attempt(sitekey) > m.config.CrawlingPolicy.MaximumCrawlingAttempt {
-		m.blacklists.Add(sitekey)
-	} else {
-		m.backoff.Add(sitekey, payload.HTTPStatus, 0)
-	}
+	m.backingOff(payload)
 
 	return nil
 }

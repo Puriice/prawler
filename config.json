@@ -8,7 +8,8 @@
 	"exchange_name": {
 		"uri": "prawler.uri",
 		"blacklists": "prawler.blacklists",
-		"frontier": "prawler.frontier"
+		"frontier": "prawler.frontier",
+		"backoff": "prawler.backoff"
 	},
 	"queue_name": "prawler.uri",
 	"policy": {

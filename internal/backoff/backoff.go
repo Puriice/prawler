@@ -46,7 +46,7 @@ func NewManager(cfg Config) *Manager {
 	}
 }
 
-func (m *Manager) Add(sitekey string, httpStatus int, retryAfter time.Duration) {
+func (m *Manager) Add(sitekey string, httpStatus int, retryAfter time.Duration) time.Duration {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -59,15 +59,9 @@ func (m *Manager) Add(sitekey string, httpStatus int, retryAfter time.Duration) 
 	now := time.Now()
 
 	// Calculate delay
-	var delay time.Duration
-
-	if retryAfter > 0 {
-		delay = max(retryAfter)
-	} else {
-		delay = m.cfg.BaseDelay
-		delay *= (1 << s.attempt)
-		delay = min(delay, m.cfg.MaxDelay)
-	}
+	delay := max(retryAfter, m.cfg.BaseDelay)
+	delay *= (1 << s.attempt)
+	delay = min(delay, m.cfg.MaxDelay)
 
 	switch {
 	case httpStatus == 429:
@@ -85,6 +79,8 @@ func (m *Manager) Add(sitekey string, httpStatus int, retryAfter time.Duration) 
 	// Update state
 	s.attempt++
 	s.next = now.Add(delay)
+
+	return time.Until(s.next)
 }
 
 func (m *Manager) Attempt(sitekey string) int {

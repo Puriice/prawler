@@ -86,6 +86,7 @@ func (p ConfirmPayload) IsValid() error {
 
 type BackoffPayload struct {
 	PageUUID *string `json:"page_uuid,omitempty"`
+	Depth    int     `json:"depth"`
 
 	URI        *string       `json:"url,omitempty"`
 	HTTPStatus int           `json:"http_status,omitempty"`

@@ -23,6 +23,7 @@ type ExchangeConfig struct {
 	URI        string `json:"uri"`
 	Blacklists string `json:"blacklists"`
 	Frontier   string `json:"frontier"`
+	Backoff    string `json:"backoff"`
 }
 
 type CrawlingPolicy struct {
