@@ -152,12 +152,7 @@ func (r PostgresWebsiteRepository) AddRobots(context context.Context, domains ur
 	return nil
 }
 
-func (r PostgresWebsiteRepository) AddPage(
-	context context.Context,
-	url url.URL,
-	depth int,
-	page html.Page,
-) (string, error) {
+func (r PostgresWebsiteRepository) AddPage(context context.Context, url url.URL, depth int) (string, error) {
 	origin := uri.OriginKey(url)
 	domainUUID, err := queryDomainUUID(context, r.db, origin)
 
@@ -170,8 +165,8 @@ func (r PostgresWebsiteRepository) AddPage(
 	err = r.db.QueryRow(
 		context,
 		`
-		INSERT INTO pages (domain_uuid, url, canonical_url, depth, indexable, checksum) 
-		VALUES ($1, $2, $3, $4, $5, $6) 
+		INSERT INTO pages (domain_uuid, url, depth) 
+		VALUES ($1, $2, $3) 
 		ON CONFLICT (domain_uuid, url)
 		DO UPDATE SET
 			domain_uuid = pages.domain_uuid
@@ -179,13 +174,41 @@ func (r PostgresWebsiteRepository) AddPage(
 		`,
 		domainUUID,
 		url.String(),
+		depth,
+	).Scan(&uuid)
+
+	return uuid, err
+}
+
+func (r PostgresWebsiteRepository) AddPageInformation(
+	context context.Context,
+	pageUUID string,
+	url url.URL,
+	depth int,
+	page html.Page,
+) error {
+	_, err := r.db.Exec(
+		context,
+		`
+		UPDATE pages
+		SET
+			url = $2, 
+			canonical_url = $3,
+			depth = $4,
+			indexable = $5,
+			checksum = $6
+		WHERE 
+			uuid = $1
+		`,
+		pageUUID,
+		url.String(),
 		page.CanonicalURL,
 		depth,
 		!page.NoIndex,
 		page.Checksum,
-	).Scan(&uuid)
+	)
 
-	return uuid, err
+	return err
 }
 
 func (r PostgresWebsiteRepository) AddPageMetadata(context context.Context, pageUUID string, meta html.PageMetaData) error {

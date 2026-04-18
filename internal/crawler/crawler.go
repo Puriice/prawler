@@ -76,15 +76,15 @@ func (c Crawler) handleCrawlEvent(payload events.CrawlPayload) error {
 		return err
 	}
 
-	pageUUID, err := c.websiteRepository.AddPage(c.ctx, *finalURI, payload.Depth, *page)
+	err = c.websiteRepository.AddPageInformation(c.ctx, payload.PageUUID, *finalURI, payload.Depth, *page)
 
 	if err == nil {
-		c.websiteRepository.AddPageMetadata(c.ctx, pageUUID, *meta)
-		c.websiteRepository.AddPageContent(c.ctx, pageUUID, *content)
+		c.websiteRepository.AddPageMetadata(c.ctx, payload.PageUUID, *meta)
+		c.websiteRepository.AddPageContent(c.ctx, payload.PageUUID, *content)
 	}
 
 	if page.NoFollow {
-		c.client.ConfirmCrawled(pageUUID, enum.Page.Parsed, *payload.URI, finalURI.String(), page.CanonicalURL, payload.Depth)
+		c.client.ConfirmCrawled(payload.PageUUID, enum.Page.Parsed, *payload.URI, finalURI.String(), page.CanonicalURL, payload.Depth)
 		return nil
 	}
 
@@ -96,7 +96,7 @@ func (c Crawler) handleCrawlEvent(payload events.CrawlPayload) error {
 		c.client.Register(link.TargetURL)
 	}
 
-	c.client.ConfirmCrawled(pageUUID, enum.Page.Parsed, *payload.URI, finalURI.String(), page.CanonicalURL, payload.Depth)
+	c.client.ConfirmCrawled(payload.PageUUID, enum.Page.Parsed, *payload.URI, finalURI.String(), page.CanonicalURL, payload.Depth)
 	return nil
 }
 

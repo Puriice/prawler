@@ -24,7 +24,8 @@ type WebsiteRepository interface {
 
 	AddDomain(context context.Context, domain url.URL) error
 	AddRobots(context context.Context, domain url.URL, raw string) error
-	AddPage(context context.Context, url url.URL, depth int, page html.Page) (string, error)
+	AddPage(context context.Context, url url.URL, depth int) (string, error)
+	AddPageInformation(context context.Context, pageUUID string, url url.URL, depth int, page html.Page) error
 	AddPageMetadata(context context.Context, pageUUID string, meta html.PageMetaData) error
 	AddPageContent(context context.Context, pageUUID string, content html.PageContent) error
 

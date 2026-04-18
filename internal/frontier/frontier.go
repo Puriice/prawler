@@ -143,6 +143,12 @@ func (m FrontierNode) handleURIRegister(payload events.URIPayload) error {
 		return nil
 	}
 
+	pageUUID, err := m.websiteRepository.AddPage(m.ctx, *url, payload.Depth)
+
+	if err != nil {
+		return err
+	}
+
 	crawlerUUID, ok := m.planner.Plan(siteKey)
 
 	if !ok {
@@ -156,7 +162,6 @@ func (m FrontierNode) handleURIRegister(payload events.URIPayload) error {
 	}
 
 	now := time.Now()
-
 	key := fmt.Sprintf("%s.%s", m.config.QueueName, crawlerUUID)
 
 	event := events.CrawlEvent{
@@ -166,6 +171,7 @@ func (m FrontierNode) handleURIRegister(payload events.URIPayload) error {
 				URI:       &normalizedURI,
 				Timestamp: &now,
 			},
+			PageUUID: pageUUID,
 		},
 	}
 
