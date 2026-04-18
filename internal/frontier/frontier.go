@@ -85,6 +85,13 @@ func (m *FrontierNode) Setup(
 	m.robotParser = &robotParser
 
 	m.worker.SpawnWorker()
+
+	pages := websiteRepository.GetParsedPage(m.ctx)
+
+	for _, page := range pages {
+		m.addFilter(page.URL)
+		m.addFilter(page.CanonicalURL)
+	}
 }
 
 func (m *FrontierNode) SetupHolter(mux *http.ServeMux) {

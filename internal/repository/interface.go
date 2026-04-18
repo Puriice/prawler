@@ -20,6 +20,7 @@ type CrawlerRepository interface {
 type WebsiteRepository interface {
 	GetBlacklistDomain(context context.Context) []string
 	GetRobots(context context.Context, domain url.URL) (*string, *time.Time, error)
+	GetParsedPage(context context.Context) []Page
 
 	AddDomain(context context.Context, domain url.URL) error
 	AddRobots(context context.Context, domain url.URL, raw string) error

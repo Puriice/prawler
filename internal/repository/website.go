@@ -72,6 +72,54 @@ func (r PostgresWebsiteRepository) GetRobots(context context.Context, domain url
 	return &raw, &timestamp, nil
 }
 
+func (r PostgresWebsiteRepository) GetParsedPage(context context.Context) []Page {
+	rows, err := r.db.Query(
+		context,
+		`
+		SELECT 
+			url,
+			canonical_url
+			indexable,
+			depth,
+			checksum
+		FROM pages
+		WHERE status = "Parsed" OR status = "Indexed"
+		`,
+	)
+
+	if err != nil {
+		return []Page{}
+	}
+	defer rows.Close()
+
+	var pages []Page
+
+	for rows.Next() {
+		var url, canonicalURL, checksum string
+		var depth int
+		var indexable bool
+
+		rows.Scan(&url, &canonicalURL, &indexable, &depth, &checksum)
+
+		pages = append(pages, Page{
+			URL:   url,
+			Depth: depth,
+			Page: html.Page{
+				CanonicalURL: canonicalURL,
+				NoIndex:      !indexable,
+				NoFollow:     false,
+				Checksum:     checksum,
+			},
+		})
+	}
+
+	if rows.Err() != nil {
+		return []Page{}
+	}
+
+	return pages
+}
+
 func (r PostgresWebsiteRepository) AddDomain(context context.Context, domain url.URL) error {
 	_, err := r.db.Exec(context, "INSERT INTO domains (scheme, host, port) VALUES ($1, $2, $3) ON CONFLICT (scheme, host, port) DO NOTHING", domain.Scheme, domain.Hostname(), domain.Port())
 
