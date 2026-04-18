@@ -14,6 +14,7 @@
 	"policy": {
 		"user_agent": "prawler",
 		"crawling_delay_ms": 1000,
-		"maximum_crawling_depth": 5
+		"maximum_crawling_depth": 5,
+		"maximum_crawling_attempt": 5
 	}
 }

@@ -26,9 +26,10 @@ type ExchangeConfig struct {
 }
 
 type CrawlingPolicy struct {
-	UserAgent            string `json:"user_agent"`
-	CrawlingDelayInMS    int    `json:"crawling_delay_ms"`
-	MaximumCrawlingDepth int    `json:"maximum_crawling_depth"`
+	UserAgent              string `json:"user_agent"`
+	CrawlingDelayInMS      int    `json:"crawling_delay_ms"`
+	MaximumCrawlingDepth   int    `json:"maximum_crawling_depth"`
+	MaximumCrawlingAttempt int    `json:"maximum_crawling_attempt"`
 }
 
 type Config struct {
@@ -53,9 +54,10 @@ func Default() *Config {
 		},
 		QueueName: "prawler.uri",
 		CrawlingPolicy: CrawlingPolicy{
-			UserAgent:            "prawler",
-			CrawlingDelayInMS:    1000,
-			MaximumCrawlingDepth: 5,
+			UserAgent:              "prawler",
+			CrawlingDelayInMS:      1000,
+			MaximumCrawlingDepth:   5,
+			MaximumCrawlingAttempt: 5,
 		},
 	}
 }

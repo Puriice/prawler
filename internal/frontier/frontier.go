@@ -14,6 +14,7 @@ import (
 	"github.com/purrice/prawler/internal/backoff"
 	"github.com/purrice/prawler/internal/config"
 	"github.com/purrice/prawler/internal/config/blacklists"
+	"github.com/purrice/prawler/internal/enum"
 	"github.com/purrice/prawler/internal/events"
 	"github.com/purrice/prawler/internal/fetch"
 	"github.com/purrice/prawler/internal/heartbeat"
@@ -139,10 +140,7 @@ func (m FrontierNode) handleURIRegister(payload events.URIPayload) error {
 
 	rbs, err := m.robotParser.Parse(*url)
 
-	if errors.Is(err, robots.ErrNotAllowed) {
-		m.blacklists.Add(siteKey)
-		return nil
-	} else if err != nil {
+	if err != nil {
 		return nil
 	}
 
@@ -210,14 +208,25 @@ func (m FrontierNode) handleConfirmEvent(payload events.ConfirmPayload) error {
 		return err
 	}
 
-	m.addFilter(*payload.URI)
-	m.addFilter(*payload.Canonical)
-	m.addFilter(*payload.FinalURI)
 	m.websiteRepository.SetPageStatus(m.ctx, *payload.PageUUID, *payload.Status)
 
 	sitekey := uri.SiteKey(*url)
 
-	m.backoff.Reset(sitekey)
+	switch payload.Status {
+	case &enum.Page.Parsed:
+		m.backoff.Reset(sitekey)
+		fallthrough
+	case &enum.Page.Skipped:
+		m.addFilter(*payload.URI)
+		m.addFilter(*payload.Canonical)
+		m.addFilter(*payload.FinalURI)
+	case &enum.Page.Failed:
+		if m.backoff.Attempt(sitekey) > m.config.CrawlingPolicy.MaximumCrawlingAttempt {
+			m.blacklists.Add(sitekey)
+		} else {
+			m.backoff.Add(sitekey, payload.HTTPStatus, 0)
+		}
+	}
 
 	return nil
 }
@@ -231,7 +240,11 @@ func (m FrontierNode) handleBackoffEvent(payload events.BackoffPayload) error {
 
 	sitekey := uri.SiteKey(*url)
 
-	m.backoff.Add(sitekey, payload.HTTPStatus, payload.RetryAfter)
+	if m.backoff.Attempt(sitekey) > m.config.CrawlingPolicy.MaximumCrawlingAttempt {
+		m.blacklists.Add(sitekey)
+	} else {
+		m.backoff.Add(sitekey, payload.HTTPStatus, 0)
+	}
 
 	return nil
 }
