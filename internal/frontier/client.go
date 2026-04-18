@@ -22,6 +22,10 @@ type Client struct {
 	keys   keys
 }
 
+type validatable interface {
+	IsValid() error
+}
+
 func NewClient(rabbit *messaging.RabbitMQ) (Client, error) {
 	cfg := config.GetConfig()
 	broker, err := rabbit.NewBroker(cfg.ExchangeName.Frontier)
@@ -40,6 +44,23 @@ func NewClient(rabbit *messaging.RabbitMQ) (Client, error) {
 	}, nil
 }
 
+func (c Client) sendPayload(key string, eventType events.FrontierEventType, payload validatable) error {
+	if err := payload.IsValid(); err != nil {
+		return err
+	}
+
+	bytes, err := json.Marshal(payload)
+
+	if err != nil {
+		return err
+	}
+
+	return c.broker.Publish(key, events.FrontierEvent{
+		Type:    eventType,
+		Payload: bytes,
+	})
+}
+
 func (c Client) Register(uri string, depth int) error {
 	now := time.Now()
 
@@ -49,53 +70,83 @@ func (c Client) Register(uri string, depth int) error {
 		Timestamp: &now,
 	}
 
-	bytes, err := json.Marshal(payload)
-
-	if err != nil {
-		return err
-	}
-
-	return c.broker.Publish(c.keys.Register, events.FrontierEvent{
-		Type:    events.FrontierURIRegister,
-		Payload: bytes,
-	})
+	return c.sendPayload(
+		c.keys.Register,
+		events.FrontierURIRegister,
+		payload,
+	)
 }
 
-func (c Client) FailedCrawled() error {
+func (c Client) SkipCrawl(
+	pageUUID string,
+	httpStatus int,
+	original string,
+	final string,
+	depth int,
+) error {
 	payload := events.ConfirmPayload{
-		Status: &enum.Page.Failed,
+		Status:     &enum.Page.Skipped,
+		HTTPStatus: httpStatus,
 
-		URI:       nil,
-		FinalURI:  nil,
+		PageUUID: &pageUUID,
+
+		URI:       &original,
+		FinalURI:  &final,
 		Canonical: nil,
 
-		Depth: 0,
+		Depth: depth,
 
 		Timestamp: time.Now(),
 	}
 
-	bytes, err := json.Marshal(payload)
+	return c.sendPayload(
+		c.keys.Confirm,
+		events.FrontierCrawlConfirm,
+		payload,
+	)
+}
 
-	if err != nil {
-		return err
+func (c Client) FailedCrawled(
+	pageUUID string,
+	httpStatus int,
+	original string,
+	final string,
+	depth int,
+) error {
+	payload := events.ConfirmPayload{
+		Status:     &enum.Page.Failed,
+		HTTPStatus: httpStatus,
+
+		PageUUID: &pageUUID,
+
+		URI:       &original,
+		FinalURI:  &final,
+		Canonical: nil,
+
+		Depth: depth,
+
+		Timestamp: time.Now(),
 	}
 
-	return c.broker.Publish(c.keys.Register, events.FrontierEvent{
-		Type:    events.FrontierCrawlConfirm,
-		Payload: bytes,
-	})
+	return c.sendPayload(
+		c.keys.Confirm,
+		events.FrontierCrawlConfirm,
+		payload,
+	)
 }
 
 func (c Client) ConfirmCrawled(
 	pageUUID string,
 	status enum.PageStatus,
+	httpStatus int,
 	original string,
 	final string,
 	canonical string,
 	depth int,
 ) error {
 	payload := events.ConfirmPayload{
-		Status: &status,
+		Status:     &status,
+		HTTPStatus: httpStatus,
 
 		PageUUID: &pageUUID,
 
@@ -108,16 +159,11 @@ func (c Client) ConfirmCrawled(
 		Timestamp: time.Now(),
 	}
 
-	bytes, err := json.Marshal(payload)
-
-	if err != nil {
-		return err
-	}
-
-	return c.broker.Publish(c.keys.Register, events.FrontierEvent{
-		Type:    events.FrontierCrawlConfirm,
-		Payload: bytes,
-	})
+	return c.sendPayload(
+		c.keys.Confirm,
+		events.FrontierCrawlConfirm,
+		payload,
+	)
 }
 
 func (c Client) Backoff(
@@ -136,18 +182,9 @@ func (c Client) Backoff(
 		Timestamp: time.Now(),
 	}
 
-	if err := payload.IsValid(); err != nil {
-		return err
-	}
-
-	bytes, err := json.Marshal(payload)
-
-	if err != nil {
-		return err
-	}
-
-	return c.broker.Publish(c.keys.Backoff, events.FrontierEvent{
-		Type:    events.FrontierBackoff,
-		Payload: bytes,
-	})
+	return c.sendPayload(
+		c.keys.Backoff,
+		events.FrontierCrawlConfirm,
+		payload,
+	)
 }

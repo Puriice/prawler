@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/purrice/prawler/internal/enum"
 	"github.com/purrice/prawler/internal/events"
@@ -64,6 +65,21 @@ func (c Crawler) handleCrawlEvent(payload events.CrawlPayload) error {
 
 	finalURI := resp.Request.URL
 
+	switch {
+	case resp.StatusCode == 429 || resp.StatusCode >= 500:
+		return c.client.Backoff(payload.PageUUID, *payload.URI, resp.StatusCode, html.ParseRetryAfter(resp))
+	case resp.StatusCode >= 400 && resp.StatusCode < 500:
+		return c.client.FailedCrawled(payload.PageUUID, resp.StatusCode, *payload.URI, finalURI.String(), payload.Depth)
+	case resp.StatusCode != 200:
+		return c.client.SkipCrawl(payload.PageUUID, resp.StatusCode, *payload.URI, finalURI.String(), payload.Depth)
+	}
+
+	contentType := strings.ToLower(resp.Header.Get("Content-Type"))
+
+	if !strings.Contains(contentType, "text/html") {
+		return c.client.SkipCrawl(payload.PageUUID, resp.StatusCode, *payload.URI, finalURI.String(), payload.Depth)
+	}
+
 	parser, err := html.NewParser(finalURI.String())
 
 	if err != nil {
@@ -84,8 +100,14 @@ func (c Crawler) handleCrawlEvent(payload events.CrawlPayload) error {
 	}
 
 	if page.NoFollow {
-		c.client.ConfirmCrawled(payload.PageUUID, enum.Page.Parsed, *payload.URI, finalURI.String(), page.CanonicalURL, payload.Depth)
-		return nil
+		return c.client.ConfirmCrawled(payload.PageUUID,
+			enum.Page.Parsed,
+			resp.StatusCode,
+			*payload.URI,
+			finalURI.String(),
+			page.CanonicalURL,
+			payload.Depth,
+		)
 	}
 
 	for _, link := range page.Links {
@@ -96,8 +118,15 @@ func (c Crawler) handleCrawlEvent(payload events.CrawlPayload) error {
 		c.client.Register(link.TargetURL, payload.Depth+1)
 	}
 
-	c.client.ConfirmCrawled(payload.PageUUID, enum.Page.Parsed, *payload.URI, finalURI.String(), page.CanonicalURL, payload.Depth)
-	return nil
+	return c.client.ConfirmCrawled(
+		payload.PageUUID,
+		enum.Page.Parsed,
+		resp.StatusCode,
+		*payload.URI,
+		finalURI.String(),
+		page.CanonicalURL,
+		payload.Depth,
+	)
 }
 
 func (c Crawler) Handle(data []byte) error {

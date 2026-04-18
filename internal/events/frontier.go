@@ -38,7 +38,8 @@ func (e FrontierEvent) IsValid() error {
 }
 
 type ConfirmPayload struct {
-	Status *enum.PageStatus `json:"status,omitempty"`
+	Status     *enum.PageStatus `json:"status,omitempty"`
+	HTTPStatus int              `json:"http_status,omitempty"`
 
 	PageUUID *string `json:"page_uuid,omitempty"`
 
@@ -65,6 +66,10 @@ func (p ConfirmPayload) IsValid() error {
 	}
 
 	if !p.Status.IsValid() {
+		return types.ErrInvalidField
+	}
+
+	if p.HTTPStatus < 100 || p.HTTPStatus > 599 {
 		return types.ErrInvalidField
 	}
 
