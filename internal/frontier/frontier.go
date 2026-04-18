@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/puriice/golibs/pkg/messaging"
+	"github.com/purrice/prawler/internal/backoff"
 	"github.com/purrice/prawler/internal/config"
 	"github.com/purrice/prawler/internal/config/blacklists"
 	"github.com/purrice/prawler/internal/events"
@@ -46,7 +47,8 @@ type FrontierNode struct {
 	planner     *planner.Planner[string, string]
 	filter      Filter
 
-	worker *worker.WorkerManager
+	backoff *backoff.Manager
+	worker  *worker.WorkerManager
 }
 
 func NewFrontierNode(
@@ -62,7 +64,8 @@ func NewFrontierNode(
 		planner: planner.NewPlanner[string, string](),
 		filter:  filter,
 
-		worker: worker.NewManager(ctx, 2),
+		backoff: backoff.NewManager(backoff.Default()),
+		worker:  worker.NewManager(ctx, 3),
 	}
 }
 
@@ -201,11 +204,36 @@ func (m FrontierNode) addFilter(u string) {
 }
 
 func (m FrontierNode) handleConfirmEvent(payload events.ConfirmPayload) error {
+	url, err := url.Parse(*payload.URI)
+
+	if err != nil {
+		return err
+	}
+
 	m.addFilter(*payload.URI)
 	m.addFilter(*payload.Canonical)
 	m.addFilter(*payload.FinalURI)
+	m.websiteRepository.SetPageStatus(m.ctx, *payload.PageUUID, *payload.Status)
 
-	return m.websiteRepository.SetPageStatus(m.ctx, *payload.PageUUID, *payload.Status)
+	sitekey := uri.SiteKey(*url)
+
+	m.backoff.Reset(sitekey)
+
+	return nil
+}
+
+func (m FrontierNode) handleBackoffEvent(payload events.BackoffPayload) error {
+	url, err := url.Parse(*payload.URI)
+
+	if err != nil {
+		return nil
+	}
+
+	sitekey := uri.SiteKey(*url)
+
+	m.backoff.Add(sitekey, payload.HTTPStatus, payload.RetryAfter)
+
+	return nil
 }
 
 func (m FrontierNode) Handle(data []byte) error {
@@ -248,6 +276,19 @@ func (m FrontierNode) Handle(data []byte) error {
 
 		m.worker.AssignTo(1, func() {
 			if err := m.handleConfirmEvent(payload); err != nil {
+				log.Println(err)
+			}
+		})
+	case events.FrontierBackoff:
+		var payload events.BackoffPayload
+
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			log.Println(err)
+			return nil
+		}
+
+		m.worker.AssignTo(2, func() {
+			if err := m.handleBackoffEvent(payload); err != nil {
 				log.Println(err)
 			}
 		})

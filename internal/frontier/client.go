@@ -14,6 +14,7 @@ import (
 type keys struct {
 	Register string
 	Confirm  string
+	Backoff  string
 }
 
 type Client struct {
@@ -34,6 +35,7 @@ func NewClient(rabbit *messaging.RabbitMQ) (Client, error) {
 		keys: keys{
 			Register: fmt.Sprintf("%s.uri", cfg.ExchangeName.Frontier),
 			Confirm:  fmt.Sprintf("%s.confirm", cfg.ExchangeName.Frontier),
+			Backoff:  fmt.Sprintf("%s.backoff", cfg.ExchangeName.Frontier),
 		},
 	}, nil
 }
@@ -114,6 +116,38 @@ func (c Client) ConfirmCrawled(
 
 	return c.broker.Publish(c.keys.Register, events.FrontierEvent{
 		Type:    events.FrontierCrawlConfirm,
+		Payload: bytes,
+	})
+}
+
+func (c Client) Backoff(
+	pageUUID string,
+	url string,
+	httpStatus int,
+	retryAfter time.Duration,
+) error {
+	payload := events.BackoffPayload{
+		PageUUID: &pageUUID,
+
+		URI:        &url,
+		HTTPStatus: httpStatus,
+		RetryAfter: retryAfter,
+
+		Timestamp: time.Now(),
+	}
+
+	if err := payload.IsValid(); err != nil {
+		return err
+	}
+
+	bytes, err := json.Marshal(payload)
+
+	if err != nil {
+		return err
+	}
+
+	return c.broker.Publish(c.keys.Backoff, events.FrontierEvent{
+		Type:    events.FrontierBackoff,
 		Payload: bytes,
 	})
 }

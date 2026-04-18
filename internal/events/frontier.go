@@ -15,11 +15,13 @@ type FrontierEventType string
 const (
 	FrontierURIRegister  FrontierEventType = "prawler.frontier.uri"
 	FrontierCrawlConfirm FrontierEventType = "prawler.frontier.confirm"
+	FrontierBackoff      FrontierEventType = "prawler.frontier.backoff"
 )
 
 var ValidEventType = []FrontierEventType{
 	FrontierURIRegister,
 	FrontierCrawlConfirm,
+	FrontierBackoff,
 }
 
 type FrontierEvent struct {
@@ -46,7 +48,7 @@ type ConfirmPayload struct {
 
 	Depth int `json:"depth,omitempty"`
 
-	Timestamp time.Time `json:"timestamp,omitempty"`
+	Timestamp time.Time `json:"timestamp"`
 }
 
 func (p ConfirmPayload) IsValid() error {
@@ -72,6 +74,32 @@ func (p ConfirmPayload) IsValid() error {
 
 	if p.FinalURI != nil && *p.FinalURI == "" {
 		return types.ErrInvalidField
+	}
+
+	return nil
+}
+
+type BackoffPayload struct {
+	PageUUID *string `json:"page_uuid,omitempty"`
+
+	URI        *string       `json:"url,omitempty"`
+	HTTPStatus int           `json:"http_status,omitempty"`
+	RetryAfter time.Duration `json:"retry_after"`
+
+	Timestamp time.Time `json:"timestamp"`
+}
+
+func (p BackoffPayload) IsValid() error {
+	if p.PageUUID == nil || p.URI == nil {
+		return types.ErrMissingField
+	}
+
+	if p.HTTPStatus < 100 || p.HTTPStatus > 599 {
+		return types.ErrInvalidField
+	}
+
+	if _, err := uuid.Parse(*p.PageUUID); err != nil {
+		return types.ErrInvalidUUID
 	}
 
 	return nil
