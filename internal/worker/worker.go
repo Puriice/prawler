@@ -6,7 +6,7 @@ import (
 	"log"
 	"sync"
 
-	"github.com/purrice/prawler/internal/frontier/planner"
+	"github.com/purrice/prawler/internal/planner"
 )
 
 var (
@@ -85,15 +85,15 @@ func (m *WorkerManager) Assign(work Work) error {
 	workID := m.currentWorkId
 	m.currentWorkId++
 
-	e := event{
-		WorkID: workID,
-		Work:   work,
-	}
-
 	workerID, ok := m.planner.Plan(workID)
 
 	if !ok {
 		return ErrNoAvaliableWorker
+	}
+
+	e := event{
+		WorkID: workID,
+		Work:   work,
 	}
 
 	queue, ok := m.workers[workerID]
@@ -101,6 +101,37 @@ func (m *WorkerManager) Assign(work Work) error {
 	if !ok {
 		return ErrWorkerNotExist
 	}
+
+	select {
+	case queue <- e:
+	default:
+		// queue full → drop or log
+		log.Println("⚠️ Work dropped:", e.WorkID, e.Work)
+		return ErrMaximumWorkerCapacity
+	}
+
+	return nil
+}
+
+func (m *WorkerManager) AssignTo(workerID workerID, work Work) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	workID := m.currentWorkId
+	m.currentWorkId++
+
+	e := event{
+		WorkID: workID,
+		Work:   work,
+	}
+
+	queue, ok := m.workers[workerID]
+
+	if !ok {
+		return ErrWorkerNotExist
+	}
+
+	m.planner.Assign(workID, workerID)
 
 	select {
 	case queue <- e:

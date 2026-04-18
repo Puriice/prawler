@@ -15,8 +15,8 @@ import (
 	"github.com/purrice/prawler/internal/config/blacklists"
 	"github.com/purrice/prawler/internal/events"
 	"github.com/purrice/prawler/internal/fetch"
-	"github.com/purrice/prawler/internal/frontier/planner"
 	"github.com/purrice/prawler/internal/heartbeat"
+	"github.com/purrice/prawler/internal/planner"
 	"github.com/purrice/prawler/internal/repository"
 	"github.com/purrice/prawler/internal/robots"
 	"github.com/purrice/prawler/internal/uri"
@@ -229,7 +229,7 @@ func (m FrontierNode) Handle(data []byte) error {
 			return nil
 		}
 
-		m.worker.Assign(func() {
+		m.worker.AssignTo(0, func() {
 			if err := m.handleURIRegister(payload); err != nil {
 				log.Println(err)
 			}
@@ -242,7 +242,7 @@ func (m FrontierNode) Handle(data []byte) error {
 			return nil
 		}
 
-		m.worker.Assign(func() {
+		m.worker.AssignTo(1, func() {
 			if err := m.handleConfirmEvent(payload); err != nil {
 				log.Println(err)
 			}

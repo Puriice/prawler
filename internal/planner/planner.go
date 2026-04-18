@@ -17,18 +17,25 @@ func NewPlanner[K comparable, V comparable]() *Planner[K, V] {
 	}
 }
 
-func (p *Planner[K, V]) AddResource(uuid V) {
+func (p *Planner[K, V]) AddResource(resource V) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	p.register.AddValue(uuid)
+	p.register.AddValue(resource)
 }
 
-func (p *Planner[K, V]) RemoveResource(uuid V) {
+func (p *Planner[K, V]) RemoveResource(resource V) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	p.register.RemoveByValue(uuid)
+	p.register.RemoveByValue(resource)
+}
+
+func (p *Planner[K, V]) Assign(key K, resource V) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	p.register.Put(key, resource)
 }
 
 func (p *Planner[K, V]) Plan(key K) (V, bool) {
