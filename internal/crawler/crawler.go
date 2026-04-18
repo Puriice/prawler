@@ -52,7 +52,6 @@ func (c Crawler) handleCrawlEvent(payload events.URIPayload) error {
 	uri, err := url.Parse(*payload.URI)
 
 	if err != nil {
-		c.client.ConfirmCrawled(enum.Page.Failed, "", "", "", payload.Depth)
 		return err
 	}
 
@@ -74,7 +73,6 @@ func (c Crawler) handleCrawlEvent(payload events.URIPayload) error {
 	meta, page, content, err := parser.ParseReader(resp.Body)
 
 	if err != nil {
-		c.client.ConfirmCrawled(enum.Page.Failed, "", "", "", payload.Depth)
 		return err
 	}
 

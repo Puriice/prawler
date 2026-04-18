@@ -58,6 +58,31 @@ func (c Client) Register(uri string) error {
 	})
 }
 
+func (c Client) FailedCrawled() error {
+	payload := events.ConfirmPayload{
+		Status: &enum.Page.Failed,
+
+		URI:       nil,
+		FinalURI:  nil,
+		Canonical: nil,
+
+		Depth: 0,
+
+		Timestamp: time.Now(),
+	}
+
+	bytes, err := json.Marshal(payload)
+
+	if err != nil {
+		return err
+	}
+
+	return c.broker.Publish(c.keys.Register, events.FrontierEvent{
+		Type:    events.FrontierCrawlConfirm,
+		Payload: bytes,
+	})
+}
+
 func (c Client) ConfirmCrawled(
 	status enum.PageStatus,
 	original string,
