@@ -26,8 +26,8 @@ func main() {
 	env.Init()
 	cfg := config.GetConfig()
 
-	amqpURL := env.Get("amqp_url", "amqp://guest:guest@localhost/")
-	holterEndpoint, err := url.Parse(env.Get("holter_url", "http://localhost:5723"))
+	amqpURL := env.Get("AMQP_URL", "amqp://guest:guest@localhost/")
+	holterEndpoint, err := url.Parse(env.Get("HOLTER_URL", "http://localhost:5723"))
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 

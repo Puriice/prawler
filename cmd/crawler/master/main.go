@@ -28,7 +28,7 @@ func main() {
 	}
 	defer db.Close()
 
-	amqpURL := env.Get("amqp_url", "amqp://guest:guest@localhost/")
+	amqpURL := env.Get("AMQP_URL", "amqp://guest:guest@localhost/")
 	rabbit, err := messaging.NewRabbitMQ(amqpURL)
 
 	if err != nil {
