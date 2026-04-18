@@ -163,15 +163,22 @@ func (m FrontierNode) handleURIRegister(payload events.URIPayload) error {
 	return nil
 }
 
-func (m FrontierNode) handleConfirmEvent(payload events.ConfirmPayload) error {
-	url, err := url.Parse(*payload.URI)
+func (m FrontierNode) addFilter(u string) {
+	url, err := url.Parse(u)
 
 	if err != nil {
-		return nil
+		return
 	}
 
-	uri := uri.Normalize(*url)
-	m.filter.Add(uri)
+	normalized := uri.Normalize(*url)
+	m.filter.Add(normalized)
+}
+
+func (m FrontierNode) handleConfirmEvent(payload events.ConfirmPayload) error {
+	m.addFilter(*payload.URI)
+	m.addFilter(*payload.Canonical)
+	m.addFilter(*payload.FinalURI)
+
 	return nil
 }
 
