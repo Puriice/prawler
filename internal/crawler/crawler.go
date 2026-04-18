@@ -47,7 +47,7 @@ func NewCrawler(
 	}
 }
 
-func (c Crawler) handleCrawlEvent(payload events.URIPayload) error {
+func (c Crawler) handleCrawlEvent(payload events.CrawlPayload) error {
 	log.Printf("Recieve uri: %s", *payload.URI)
 	uri, err := url.Parse(*payload.URI)
 

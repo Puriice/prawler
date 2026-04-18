@@ -161,9 +161,11 @@ func (m FrontierNode) handleURIRegister(payload events.URIPayload) error {
 
 	event := events.CrawlEvent{
 		Type: events.CrawlURI,
-		Payload: events.URIPayload{
-			URI:       &normalizedURI,
-			Timestamp: &now,
+		Payload: events.CrawlPayload{
+			URIPayload: events.URIPayload{
+				URI:       &normalizedURI,
+				Timestamp: &now,
+			},
 		},
 	}
 
