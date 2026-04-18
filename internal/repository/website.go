@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/puriice/golibs/pkg/pgutils"
+	"github.com/purrice/prawler/internal/enum"
 	"github.com/purrice/prawler/internal/html"
 	"github.com/purrice/prawler/internal/uri"
 )
@@ -227,6 +228,12 @@ func (r PostgresWebsiteRepository) AddPageContent(context context.Context, pageU
 		},
 		pgx.CopyFromRows(rows),
 	)
+
+	return err
+}
+
+func (r PostgresWebsiteRepository) SetPageStatus(context context.Context, pageUUID string, status enum.PageStatus) error {
+	_, err := r.db.Exec(context, "UPDATE pages SET status = $2 WHERE uuid = $1", pageUUID, status)
 
 	return err
 }

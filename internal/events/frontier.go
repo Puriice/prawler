@@ -5,6 +5,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/purrice/prawler/internal/types"
 )
 
@@ -34,6 +35,8 @@ func (e FrontierEvent) IsValid() error {
 }
 
 type ConfirmPayload struct {
+	PageUUID *string `json:"page_uuid,omitempty"`
+
 	URI       *string `json:"uri,omitempty"`
 	FinalURI  *string `json:"final_uri,omitempty"`
 	Canonical *string `json:"canonical,omitempty"`
@@ -44,12 +47,16 @@ type ConfirmPayload struct {
 }
 
 func (p ConfirmPayload) IsValid() error {
-	if p.URI == nil {
+	if p.PageUUID == nil || p.URI == nil {
 		return types.ErrMissingURI
 	}
 
-	if *p.URI == "" {
+	if *p.PageUUID == "" || *p.URI == "" {
 		return types.ErrInvalidField
+	}
+
+	if _, err := uuid.Parse(*p.PageUUID); err != nil {
+		return types.ErrInvalidUUID
 	}
 
 	if p.Canonical != nil && *p.Canonical == "" {

@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/purrice/prawler/internal/enum"
 	"github.com/purrice/prawler/internal/html"
 )
 
@@ -25,4 +26,6 @@ type WebsiteRepository interface {
 	AddPage(context context.Context, url url.URL, depth int, page html.Page) (string, error)
 	AddPageMetadata(context context.Context, pageUUID string, meta html.PageMetaData) error
 	AddPageContent(context context.Context, pageUUID string, content html.PageContent) error
+
+	SetPageStatus(context context.Context, pageUUID string, status enum.PageStatus) error
 }
