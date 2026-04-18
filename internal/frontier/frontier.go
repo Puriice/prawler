@@ -116,6 +116,10 @@ func (m FrontierNode) handleURIRegister(payload events.URIPayload) error {
 		return nil // Error parsing url return nil because we don't want a retry
 	}
 
+	if payload.Depth > m.config.CrawlingPolicy.MaximumCrawlingDepth {
+		return nil
+	}
+
 	origin := uri.OriginKey(*url)
 	normalizedURI := uri.Normalize(*url)
 	siteKey := uri.SiteKey(*url)
