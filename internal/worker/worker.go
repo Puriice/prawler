@@ -16,31 +16,31 @@ var (
 )
 
 type workerID int
-type workID int
+type jobID int
 
-type Work func()
+type Job func()
 
 type event struct {
-	WorkID workID
-	Work   Work
+	JobID jobID
+	Job   Job
 }
 
 type WorkerManager struct {
 	ctx     context.Context
 	workers map[workerID]chan event
-	planner *planner.Planner[workID, workerID]
+	planner *planner.Planner[jobID, workerID]
 
 	mu sync.Mutex
 
-	currentWorkId workID
+	currentJobId jobID
 }
 
 func NewManager(ctx context.Context, workerCount int) *WorkerManager {
 	manager := &WorkerManager{
-		ctx:           ctx,
-		workers:       make(map[workerID]chan event, workerCount),
-		planner:       planner.NewPlanner[workID, workerID](),
-		currentWorkId: workID(1),
+		ctx:          ctx,
+		workers:      make(map[workerID]chan event, workerCount),
+		planner:      planner.NewPlanner[jobID, workerID](),
+		currentJobId: jobID(1),
 	}
 
 	for i := range workerCount {
@@ -50,7 +50,7 @@ func NewManager(ctx context.Context, workerCount int) *WorkerManager {
 	return manager
 }
 
-func (m *WorkerManager) confirmWork(workId workID) {
+func (m *WorkerManager) confirmJobDone(workId jobID) {
 	m.planner.Done(workId)
 }
 
@@ -68,8 +68,8 @@ func (m *WorkerManager) SpawnWorker() {
 				case <-m.ctx.Done():
 					return
 				case e := <-queue:
-					e.Work()
-					m.confirmWork(e.WorkID)
+					e.Job()
+					m.confirmJobDone(e.JobID)
 				}
 			}
 		}(workerId, queue)
@@ -78,51 +78,42 @@ func (m *WorkerManager) SpawnWorker() {
 	}
 }
 
-func (m *WorkerManager) Assign(work Work) error {
+func (m *WorkerManager) Assign(job Job) error {
 	m.mu.Lock()
-	defer m.mu.Unlock()
+	jobID := m.currentJobId
+	m.currentJobId++
+	m.mu.Unlock()
 
-	workID := m.currentWorkId
-	m.currentWorkId++
-
-	workerID, ok := m.planner.Plan(workID)
+	workerID, ok := m.planner.Plan(jobID)
 
 	if !ok {
 		return ErrNoAvaliableWorker
 	}
 
-	e := event{
-		WorkID: workID,
-		Work:   work,
-	}
-
-	queue, ok := m.workers[workerID]
-
-	if !ok {
-		return ErrWorkerNotExist
-	}
-
-	select {
-	case queue <- e:
-	default:
-		// queue full → drop or log
-		log.Println("⚠️ Work dropped:", e.WorkID, e.Work)
-		return ErrMaximumWorkerCapacity
-	}
-
-	return nil
+	return m.enqueue(jobID, workerID, job)
 }
 
-func (m *WorkerManager) AssignTo(workerID workerID, work Work) error {
+func (m *WorkerManager) AssignTo(workerID workerID, job Job) error {
 	m.mu.Lock()
-	defer m.mu.Unlock()
+	jobID := m.currentJobId
+	m.currentJobId++
 
-	workID := m.currentWorkId
-	m.currentWorkId++
+	_, exist := m.workers[workerID]
+	m.mu.Unlock()
 
+	if !exist {
+		return ErrWorkerNotExist
+	}
+
+	m.planner.Assign(jobID, workerID)
+
+	return m.enqueue(jobID, workerID, job)
+}
+
+func (m *WorkerManager) enqueue(jobID jobID, workerID workerID, job Job) error {
 	e := event{
-		WorkID: workID,
-		Work:   work,
+		JobID: jobID,
+		Job:   job,
 	}
 
 	queue, ok := m.workers[workerID]
@@ -131,15 +122,10 @@ func (m *WorkerManager) AssignTo(workerID workerID, work Work) error {
 		return ErrWorkerNotExist
 	}
 
-	m.planner.Assign(workID, workerID)
-
 	select {
 	case queue <- e:
-	default:
-		// queue full → drop or log
-		log.Println("⚠️ Work dropped:", e.WorkID, e.Work)
-		return ErrMaximumWorkerCapacity
+		return nil
+	case <-m.ctx.Done():
+		return m.ctx.Err()
 	}
-
-	return nil
 }
