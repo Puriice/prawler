@@ -63,11 +63,14 @@ func (m *WorkerManager) SpawnWorker() {
 				}
 			}()
 
-			select {
-			case <-m.ctx.Done():
-			case e := <-queue:
-				e.Work()
-				m.confirmWork(e.WorkID)
+			for {
+				select {
+				case <-m.ctx.Done():
+					return
+				case e := <-queue:
+					e.Work()
+					m.confirmWork(e.WorkID)
+				}
 			}
 		}(workerId, queue)
 
