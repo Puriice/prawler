@@ -139,7 +139,7 @@ func (m FrontierNode) handleURIRegister(payload events.URIPayload) error {
 		return nil
 	}
 
-	if !rbs.IsAllow(m.config.UserAgent, *payload.URI) {
+	if !rbs.IsAllow(m.config.CrawlingPolicy.UserAgent, *payload.URI) {
 		return nil
 	}
 

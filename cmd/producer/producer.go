@@ -34,7 +34,7 @@ func main() {
 	}
 
 	for _, seed := range seeds {
-		err := client.Register(seed)
+		err := client.Register(seed, 0)
 
 		if err != nil {
 			log.Println(err)

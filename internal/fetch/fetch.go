@@ -38,7 +38,7 @@ func (f *Fetcher) getLimiter(origin string) *rate.Limiter {
 		return limiter
 	}
 
-	delay := time.Duration(config.GetConfig().CrawlingDelayInMS) * time.Millisecond
+	delay := time.Duration(config.GetConfig().CrawlingPolicy.CrawlingDelayInMS) * time.Millisecond
 	limiter = rate.NewLimiter(rate.Every(delay), 1)
 
 	f.mu.Lock()

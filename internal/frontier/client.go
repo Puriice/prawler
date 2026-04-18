@@ -38,11 +38,12 @@ func NewClient(rabbit *messaging.RabbitMQ) (Client, error) {
 	}, nil
 }
 
-func (c Client) Register(uri string) error {
+func (c Client) Register(uri string, depth int) error {
 	now := time.Now()
 
 	payload := events.URIPayload{
 		URI:       &uri,
+		Depth:     depth,
 		Timestamp: &now,
 	}
 

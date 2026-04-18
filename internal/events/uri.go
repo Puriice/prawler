@@ -22,6 +22,10 @@ func (s URIPayload) IsValid() error {
 		return types.ErrMissingURI
 	}
 
+	if s.Depth < 0 {
+		return types.ErrInvalidField
+	}
+
 	return nil
 }
 

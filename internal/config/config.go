@@ -25,13 +25,18 @@ type ExchangeConfig struct {
 	Frontier   string `json:"frontier"`
 }
 
+type CrawlingPolicy struct {
+	UserAgent            string `json:"user_agent"`
+	CrawlingDelayInMS    int    `json:"crawling_delay_ms"`
+	MaximumCrawlingDepth int    `json:"maximum_crawling_depth"`
+}
+
 type Config struct {
-	Version           float32        `json:"version"`
-	Contact           Contact        `json:"contact"`
-	UserAgent         string         `json:"user_agent"`
-	ExchangeName      ExchangeConfig `json:"exchange_name"`
-	QueueName         string         `json:"queue_name"`
-	CrawlingDelayInMS int            `json:"crawling_delay_ms"`
+	Version        float32        `json:"version"`
+	Contact        Contact        `json:"contact"`
+	ExchangeName   ExchangeConfig `json:"exchange_name"`
+	QueueName      string         `json:"queue_name"`
+	CrawlingPolicy CrawlingPolicy `json:"policy"`
 }
 
 func Default() *Config {
@@ -41,14 +46,17 @@ func Default() *Config {
 			Email: "purinutt.amartayavis@g.swu.ac.th",
 			Git:   "https://github.com/Puriice/prawler",
 		},
-		UserAgent: "prawler",
 		ExchangeName: ExchangeConfig{
 			URI:        "prawler.uri",
 			Blacklists: "prawler.blacklists",
 			Frontier:   "prawler.frontier",
 		},
-		QueueName:         "prawler.uri",
-		CrawlingDelayInMS: 1000,
+		QueueName: "prawler.uri",
+		CrawlingPolicy: CrawlingPolicy{
+			UserAgent:            "prawler",
+			CrawlingDelayInMS:    1000,
+			MaximumCrawlingDepth: 5,
+		},
 	}
 }
 
@@ -72,5 +80,5 @@ func GetConfig() *Config {
 }
 
 func (c Config) GetDisplayUserAgent() string {
-	return fmt.Sprintf("%s/%f (%s; %s Email: %s)", c.UserAgent, c.Version, c.Contact.Git, c.Contact.Description, c.Contact.Email)
+	return fmt.Sprintf("%s/%f (%s; %s Email: %s)", c.CrawlingPolicy.UserAgent, c.Version, c.Contact.Git, c.Contact.Description, c.Contact.Email)
 }

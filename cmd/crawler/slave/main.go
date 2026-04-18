@@ -89,7 +89,7 @@ func main() {
 	worker := worker.NewManager(ctx, 3)
 	worker.SpawnWorker()
 
-	crawler := crawler.NewCrawler(ctx, cfg.UserAgent, webRecordsRepository, fetcher, client, worker)
+	crawler := crawler.NewCrawler(ctx, cfg.CrawlingPolicy.UserAgent, webRecordsRepository, fetcher, client, worker)
 
 	log.Println("Start listening to hosts producing events.")
 	if err := hostListener.Subscribe(ctx, crawler.Handle); err != nil {
