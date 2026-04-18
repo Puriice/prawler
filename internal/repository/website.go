@@ -308,3 +308,39 @@ func (r PostgresWebsiteRepository) SetPageStatus(context context.Context, pageUU
 
 	return err
 }
+
+func (r PostgresWebsiteRepository) BlacklistDomain(context context.Context, domain url.URL) error {
+	_, err := r.db.Exec(
+		context,
+		`
+			INSERT INTO domains (scheme, host, port, crawl_allowed) 
+			VALUES ($1, $2, $3, FALSE)
+			ON CONFLICT (scheme, host, port)
+			DO UPDATE SET
+				crawl_allowed = FALSE;
+		`,
+		domain.Scheme,
+		domain.Hostname(),
+		domain.Port(),
+	)
+
+	return err
+}
+
+func (r PostgresWebsiteRepository) UnBlacklistDomain(context context.Context, domain url.URL) error {
+	_, err := r.db.Exec(
+		context,
+		`
+			INSERT INTO domains (scheme, host, port, crawl_allowed) 
+			VALUES ($1, $2, $3, TRUE)
+			ON CONFLICT (scheme, host, port)
+			DO UPDATE SET
+				crawl_allowed = TRUE;
+		`,
+		domain.Scheme,
+		domain.Hostname(),
+		domain.Port(),
+	)
+
+	return err
+}

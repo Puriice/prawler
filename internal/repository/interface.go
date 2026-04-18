@@ -30,4 +30,6 @@ type WebsiteRepository interface {
 	AddPageContent(context context.Context, pageUUID string, content html.PageContent) error
 
 	SetPageStatus(context context.Context, pageUUID string, status enum.PageStatus) error
+	BlacklistDomain(context context.Context, domain url.URL) error
+	UnBlacklistDomain(context context.Context, domain url.URL) error
 }
