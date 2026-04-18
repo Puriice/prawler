@@ -84,7 +84,7 @@ func (c Crawler) handleCrawlEvent(payload events.URIPayload) error {
 	}
 
 	if page.NoFollow {
-		c.client.ConfirmCrawled(enum.Page.Parsed, *payload.URI, finalURI.String(), page.CanonicalURL, payload.Depth)
+		c.client.ConfirmCrawled(pageUUID, enum.Page.Parsed, *payload.URI, finalURI.String(), page.CanonicalURL, payload.Depth)
 		return nil
 	}
 
@@ -96,7 +96,7 @@ func (c Crawler) handleCrawlEvent(payload events.URIPayload) error {
 		c.client.Register(link.TargetURL)
 	}
 
-	c.client.ConfirmCrawled(enum.Page.Parsed, *payload.URI, finalURI.String(), page.CanonicalURL, payload.Depth)
+	c.client.ConfirmCrawled(pageUUID, enum.Page.Parsed, *payload.URI, finalURI.String(), page.CanonicalURL, payload.Depth)
 	return nil
 }
 

@@ -84,6 +84,7 @@ func (c Client) FailedCrawled() error {
 }
 
 func (c Client) ConfirmCrawled(
+	pageUUID string,
 	status enum.PageStatus,
 	original string,
 	final string,
@@ -92,6 +93,8 @@ func (c Client) ConfirmCrawled(
 ) error {
 	payload := events.ConfirmPayload{
 		Status: &status,
+
+		PageUUID: &pageUUID,
 
 		URI:       &original,
 		FinalURI:  &final,
