@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/purrice/prawler/internal/enum"
 	"github.com/purrice/prawler/internal/events"
 	"github.com/purrice/prawler/internal/frontier"
 	"github.com/purrice/prawler/internal/html"
@@ -51,6 +52,7 @@ func (c Crawler) handleCrawlEvent(payload events.URIPayload) error {
 	uri, err := url.Parse(*payload.URI)
 
 	if err != nil {
+		c.client.ConfirmCrawled(enum.Page.Failed, "", "", "", payload.Depth)
 		return err
 	}
 
@@ -72,6 +74,7 @@ func (c Crawler) handleCrawlEvent(payload events.URIPayload) error {
 	meta, page, content, err := parser.ParseReader(resp.Body)
 
 	if err != nil {
+		c.client.ConfirmCrawled(enum.Page.Failed, "", "", "", payload.Depth)
 		return err
 	}
 
@@ -83,7 +86,7 @@ func (c Crawler) handleCrawlEvent(payload events.URIPayload) error {
 	}
 
 	if page.NoFollow {
-		c.client.ConfirmCrawled(*payload.URI, finalURI.String(), page.CanonicalURL, payload.Depth)
+		c.client.ConfirmCrawled(enum.Page.Parsed, *payload.URI, finalURI.String(), page.CanonicalURL, payload.Depth)
 		return nil
 	}
 
@@ -95,7 +98,7 @@ func (c Crawler) handleCrawlEvent(payload events.URIPayload) error {
 		c.client.Register(link.TargetURL)
 	}
 
-	c.client.ConfirmCrawled(*payload.URI, finalURI.String(), page.CanonicalURL, payload.Depth)
+	c.client.ConfirmCrawled(enum.Page.Parsed, *payload.URI, finalURI.String(), page.CanonicalURL, payload.Depth)
 	return nil
 }
 

@@ -13,7 +13,6 @@ import (
 	"github.com/puriice/golibs/pkg/messaging"
 	"github.com/purrice/prawler/internal/config"
 	"github.com/purrice/prawler/internal/config/blacklists"
-	"github.com/purrice/prawler/internal/enum"
 	"github.com/purrice/prawler/internal/events"
 	"github.com/purrice/prawler/internal/fetch"
 	"github.com/purrice/prawler/internal/frontier/planner"
@@ -194,7 +193,7 @@ func (m FrontierNode) handleConfirmEvent(payload events.ConfirmPayload) error {
 	m.addFilter(*payload.Canonical)
 	m.addFilter(*payload.FinalURI)
 
-	return m.websiteRepository.SetPageStatus(m.ctx, *payload.PageUUID, enum.Page.Parsed)
+	return m.websiteRepository.SetPageStatus(m.ctx, *payload.PageUUID, *payload.Status)
 }
 
 func (m FrontierNode) Handle(data []byte) error {

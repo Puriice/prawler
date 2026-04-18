@@ -7,6 +7,7 @@ import (
 
 	"github.com/puriice/golibs/pkg/messaging"
 	"github.com/purrice/prawler/internal/config"
+	"github.com/purrice/prawler/internal/enum"
 	"github.com/purrice/prawler/internal/events"
 )
 
@@ -58,12 +59,15 @@ func (c Client) Register(uri string) error {
 }
 
 func (c Client) ConfirmCrawled(
+	status enum.PageStatus,
 	original string,
 	final string,
 	canonical string,
 	depth int,
 ) error {
 	payload := events.ConfirmPayload{
+		Status: &status,
+
 		URI:       &original,
 		FinalURI:  &final,
 		Canonical: &canonical,

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/purrice/prawler/internal/enum"
 	"github.com/purrice/prawler/internal/types"
 )
 
@@ -35,6 +36,8 @@ func (e FrontierEvent) IsValid() error {
 }
 
 type ConfirmPayload struct {
+	Status *enum.PageStatus `json:"status,omitempty"`
+
 	PageUUID *string `json:"page_uuid,omitempty"`
 
 	URI       *string `json:"uri,omitempty"`
@@ -57,6 +60,10 @@ func (p ConfirmPayload) IsValid() error {
 
 	if _, err := uuid.Parse(*p.PageUUID); err != nil {
 		return types.ErrInvalidUUID
+	}
+
+	if !p.Status.IsValid() {
+		return types.ErrInvalidField
 	}
 
 	if p.Canonical != nil && *p.Canonical == "" {
