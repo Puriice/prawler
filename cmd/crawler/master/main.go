@@ -11,7 +11,6 @@ import (
 	"github.com/puriice/golibs/pkg/db"
 	"github.com/puriice/golibs/pkg/env"
 	"github.com/puriice/golibs/pkg/messaging"
-	"github.com/puriice/golibs/pkg/middleware"
 	"github.com/puriice/golibs/pkg/server"
 	"github.com/purrice/prawler/internal/frontier"
 	"github.com/purrice/prawler/internal/repository"
@@ -54,10 +53,10 @@ func main() {
 	frontier.Setup(
 		crawlerRepository,
 		websiteRepository,
+		mux,
 	)
-	frontier.SetupHolter(mux)
 
-	server.Handler = middleware.Logger(mux)
+	server.Handler = mux
 	server.Start()
 
 	frontier.Run()

@@ -75,6 +75,7 @@ func NewFrontierNode(
 func (m *FrontierNode) Setup(
 	crawlerRepository repository.CrawlerRepository,
 	websiteRepository repository.WebsiteRepository,
+	mux *http.ServeMux,
 ) {
 	robotParser := robots.NewRobotParser(websiteRepository, fetch.NewFecter(nil))
 	blacklists := blacklists.NewBlacklist(websiteRepository)
@@ -82,6 +83,9 @@ func (m *FrontierNode) Setup(
 	holter := heartbeat.NewHolter(m.ctx, 5*time.Second, 10*time.Second, 2*time.Second, crawlerRepository)
 	holter.OnChange(m.handleNodeStatusChanges)
 	holter.OnTimeout(m.handleNodeStatusChanges)
+	holter.Run(mux)
+
+	m.holter = holter
 
 	m.crawlerRepository = crawlerRepository
 	m.websiteRepository = websiteRepository
@@ -127,10 +131,6 @@ func (m *FrontierNode) Setup(
 	if err != nil {
 		log.Println(err)
 	}
-}
-
-func (m *FrontierNode) SetupHolter(mux *http.ServeMux) {
-	m.holter.Run(mux)
 }
 
 func (m *FrontierNode) handleNodeStatusChanges(node heartbeat.Node) {
@@ -243,9 +243,11 @@ func (m FrontierNode) backingOff(p events.BackoffPayload) error {
 	sitekey := uri.SiteKey(*url)
 
 	if m.backoff.Attempt(sitekey) > m.config.CrawlingPolicy.MaximumCrawlingAttempt {
+		log.Printf("Maximum attempt exceeded for: %s", sitekey)
 		m.blacklists.Add(sitekey)
 	} else {
 		delay := m.backoff.Add(sitekey, p.HTTPStatus, p.RetryAfter)
+		log.Printf("Retry %s After %ds", sitekey, delay)
 		now := time.Now()
 
 		payloadBody := events.URIPayload{
@@ -287,6 +289,7 @@ func (m FrontierNode) backingOff(p events.BackoffPayload) error {
 }
 
 func (m FrontierNode) handleConfirmEvent(payload events.ConfirmPayload) error {
+	log.Printf("Crawled %s confirm with status %s:%d", *payload.URI, *payload.Status, payload.HTTPStatus)
 	url, err := url.Parse(*payload.URI)
 
 	if err != nil {
@@ -306,7 +309,7 @@ func (m FrontierNode) handleConfirmEvent(payload events.ConfirmPayload) error {
 		m.addFilter(*payload.Canonical)
 		m.addFilter(*payload.FinalURI)
 	case &enum.Page.Failed:
-		m.backingOff(
+		return m.backingOff(
 			events.BackoffPayload{
 				PageUUID: payload.PageUUID,
 				Depth:    payload.Depth,
@@ -324,11 +327,10 @@ func (m FrontierNode) handleConfirmEvent(payload events.ConfirmPayload) error {
 }
 
 func (m FrontierNode) handleBackoffEvent(payload events.BackoffPayload) error {
+	log.Printf("Crawled %s Failed with status %d backoff for the moment", *payload.URI, payload.HTTPStatus)
 	m.websiteRepository.SetPageStatus(m.ctx, *payload.PageUUID, enum.Page.Failed)
 
-	m.backingOff(payload)
-
-	return nil
+	return m.backingOff(payload)
 }
 
 func (m FrontierNode) Handle(data []byte) error {
@@ -356,11 +358,15 @@ func (m FrontierNode) Handle(data []byte) error {
 			return nil
 		}
 
-		m.worker.AssignTo(0, func() {
+		err = m.worker.AssignTo(0, func() {
 			if err := m.handleURIRegister(payload); err != nil {
 				log.Println(err)
 			}
 		})
+
+		if err != nil {
+			log.Println(err)
+		}
 	case events.FrontierCrawlConfirm:
 		var payload events.ConfirmPayload
 
@@ -369,11 +375,15 @@ func (m FrontierNode) Handle(data []byte) error {
 			return nil
 		}
 
-		m.worker.AssignTo(1, func() {
+		err = m.worker.AssignTo(1, func() {
 			if err := m.handleConfirmEvent(payload); err != nil {
 				log.Println(err)
 			}
 		})
+
+		if err != nil {
+			log.Println(err)
+		}
 	case events.FrontierBackoff:
 		var payload events.BackoffPayload
 
@@ -382,11 +392,15 @@ func (m FrontierNode) Handle(data []byte) error {
 			return nil
 		}
 
-		m.worker.AssignTo(2, func() {
+		err = m.worker.AssignTo(2, func() {
 			if err := m.handleBackoffEvent(payload); err != nil {
 				log.Println(err)
 			}
 		})
+
+		if err != nil {
+			log.Println(err)
+		}
 	}
 
 	return nil

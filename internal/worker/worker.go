@@ -18,67 +18,91 @@ var (
 type workerID int
 type jobID int
 
-type Job func()
+type Task func()
 
-type event struct {
+type Job struct {
 	JobID jobID
-	Job   Job
+	Task  Task
 }
 
 type WorkerManager struct {
 	ctx     context.Context
-	workers map[workerID]chan event
+	workers map[workerID]chan Job
 	planner *planner.Planner[jobID, workerID]
 
 	mu sync.Mutex
 
 	currentJobId jobID
+	workingJob   map[workerID]jobID
 }
 
 func NewManager(ctx context.Context, workerCount int) *WorkerManager {
 	manager := &WorkerManager{
-		ctx:          ctx,
-		workers:      make(map[workerID]chan event, workerCount),
-		planner:      planner.NewPlanner[jobID, workerID](),
+		ctx:     ctx,
+		workers: make(map[workerID]chan Job, workerCount),
+		planner: planner.NewPlanner[jobID, workerID](),
+
 		currentJobId: jobID(1),
+		workingJob:   make(map[workerID]jobID, workerCount),
 	}
 
 	for i := range workerCount {
-		manager.workers[workerID(i)] = make(chan event, 1000)
+		manager.workers[workerID(i)] = make(chan Job, 1000)
 	}
 
 	return manager
 }
 
-func (m *WorkerManager) confirmJobDone(workId jobID) {
-	m.planner.Done(workId)
+func (m *WorkerManager) confirmJobDone(jobId jobID) {
+	m.planner.Done(jobId)
 }
 
 func (m *WorkerManager) SpawnWorker() {
 	for workerId, queue := range m.workers {
-		go func(workerId workerID, queue chan event) {
-			defer func() {
-				if r := recover(); r != nil {
-					log.Printf("[WORKER ID: %d] panic: %v\n", workerId, r)
-				}
-			}()
-
-			for {
-				select {
-				case <-m.ctx.Done():
-					return
-				case e := <-queue:
-					e.Job()
-					m.confirmJobDone(e.JobID)
-				}
-			}
-		}(workerId, queue)
+		go m.spawnWorker(workerId, queue)
 
 		m.planner.AddResource(workerId)
 	}
 }
 
-func (m *WorkerManager) Assign(job Job) error {
+func (m *WorkerManager) spawnWorker(workerId workerID, queue chan Job) {
+	for {
+		select {
+		case <-m.ctx.Done():
+			return
+		default:
+		}
+
+		m.runWorkerOnce(workerId, queue) // recovers internally
+	}
+}
+
+func (m *WorkerManager) runWorkerOnce(workerId workerID, queue chan Job) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("[WORKER ID: %d] panic: %v\n", workerId, r)
+			jobId := m.workingJob[workerId]
+			m.confirmJobDone(jobId)
+		}
+	}()
+
+	for {
+		select {
+		case j := <-queue:
+			jobID := j.JobID
+			m.workingJob[workerId] = jobID
+
+			log.Printf("[WORKER ID: %d] working on: %d\n", workerId, jobID)
+			j.Task()
+
+			m.confirmJobDone(jobID)
+		case <-m.ctx.Done():
+			return
+		}
+	}
+}
+
+func (m *WorkerManager) Assign(task Task) error {
 	m.mu.Lock()
 	jobID := m.currentJobId
 	m.currentJobId++
@@ -90,10 +114,10 @@ func (m *WorkerManager) Assign(job Job) error {
 		return ErrNoAvaliableWorker
 	}
 
-	return m.enqueue(jobID, workerID, job)
+	return m.enqueue(jobID, workerID, task)
 }
 
-func (m *WorkerManager) AssignTo(workerID workerID, job Job) error {
+func (m *WorkerManager) AssignTo(workerID workerID, task Task) error {
 	m.mu.Lock()
 	jobID := m.currentJobId
 	m.currentJobId++
@@ -107,13 +131,13 @@ func (m *WorkerManager) AssignTo(workerID workerID, job Job) error {
 
 	m.planner.Assign(jobID, workerID)
 
-	return m.enqueue(jobID, workerID, job)
+	return m.enqueue(jobID, workerID, task)
 }
 
-func (m *WorkerManager) enqueue(jobID jobID, workerID workerID, job Job) error {
-	e := event{
+func (m *WorkerManager) enqueue(jobID jobID, workerID workerID, task Task) error {
+	e := Job{
 		JobID: jobID,
-		Job:   job,
+		Task:  task,
 	}
 
 	queue, ok := m.workers[workerID]
