@@ -71,7 +71,7 @@ func NewFrontierNode(
 		crawlingFilter: set.NewSet[string](),
 
 		backoff: backoff.NewManager(),
-		worker:  worker.NewManager(ctx, 3),
+		worker:  worker.NewManager(ctx, 6),
 	}
 }
 
@@ -483,11 +483,55 @@ func (m FrontierNode) Run() {
 		return nodes
 	})
 
-	listenerConfig := messaging.NewRabbitListenerConfig(m.config.ExchangeName.Frontier, fmt.Sprintf("%s.#", m.config.ExchangeName.Frontier))
-	listener, err := broker.NewListenerWithConfig(listenerConfig)
-
-	log.Println("Start listening to slave producing events.")
-	if err := listener.Subscribe(m.ctx, m.Handle); err != nil {
-		log.Println(err)
+	keys := keys{
+		Register: fmt.Sprintf("%s.uri", m.config.ExchangeName.Frontier),
+		Confirm:  fmt.Sprintf("%s.confirm", m.config.ExchangeName.Frontier),
+		Backoff:  fmt.Sprintf("%s.backoff", m.config.ExchangeName.Frontier),
 	}
+
+	URIListenerConfig := messaging.NewRabbitListenerConfig(keys.Register, keys.Register)
+	ConfirmListenerConfig := messaging.NewRabbitListenerConfig(keys.Confirm, keys.Confirm)
+	BackoffListenerConfig := messaging.NewRabbitListenerConfig(keys.Backoff, keys.Backoff)
+
+	m.worker.AssignTo(3, func() {
+		listener, err := broker.NewListenerWithConfig(URIListenerConfig)
+
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		log.Printf("Start listening to slave producing %s events.", keys.Register)
+		if err := listener.Subscribe(m.ctx, m.Handle); err != nil {
+			log.Println(err)
+		}
+	})
+
+	m.worker.AssignTo(4, func() {
+		listener, err := broker.NewListenerWithConfig(ConfirmListenerConfig)
+
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		log.Printf("Start listening to slave producing %s events.", keys.Confirm)
+		if err := listener.Subscribe(m.ctx, m.Handle); err != nil {
+			log.Println(err)
+		}
+	})
+
+	m.worker.AssignTo(5, func() {
+		listener, err := broker.NewListenerWithConfig(BackoffListenerConfig)
+
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		log.Printf("Start listening to slave producing %s events.", keys.Backoff)
+		if err := listener.Subscribe(m.ctx, m.Handle); err != nil {
+			log.Println(err)
+		}
+	})
 }
