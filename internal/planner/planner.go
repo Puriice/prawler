@@ -64,5 +64,5 @@ func (p *Planner[K, V]) Done(key K) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	p.register.RemoveByKey(key)
+	p.register.RemoveKey(key)
 }

@@ -52,6 +52,7 @@ func Default() *Config {
 			URI:        "prawler.uri",
 			Blacklists: "prawler.blacklists",
 			Frontier:   "prawler.frontier",
+			Backoff:    "prawler.backoff",
 		},
 		QueueName: "prawler.uri",
 		CrawlingPolicy: CrawlingPolicy{

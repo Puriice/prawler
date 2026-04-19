@@ -67,6 +67,10 @@ func (h *Holter) Load(fn func() map[string]*Node) {
 	defer h.mu.Unlock()
 
 	h.nodes = fn()
+
+	for _, node := range h.nodes {
+		h.triggerStateChange(*node)
+	}
 }
 
 func (h *Holter) updateCrawlerStatus(node Node) {

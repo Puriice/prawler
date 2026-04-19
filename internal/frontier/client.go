@@ -85,14 +85,14 @@ func (c Client) SkipCrawl(
 	depth int,
 ) error {
 	payload := events.ConfirmPayload{
-		Status:     &enum.Page.Skipped,
+		Status:     enum.Page.Skipped,
 		HTTPStatus: httpStatus,
 
 		PageUUID: &pageUUID,
 
 		URI:       &original,
-		FinalURI:  &final,
-		Canonical: nil,
+		FinalURI:  final,
+		Canonical: "",
 
 		Depth: depth,
 
@@ -114,14 +114,14 @@ func (c Client) FailedCrawled(
 	depth int,
 ) error {
 	payload := events.ConfirmPayload{
-		Status:     &enum.Page.Failed,
+		Status:     enum.Page.Failed,
 		HTTPStatus: httpStatus,
 
 		PageUUID: &pageUUID,
 
 		URI:       &original,
-		FinalURI:  &final,
-		Canonical: nil,
+		FinalURI:  final,
+		Canonical: "",
 
 		Depth: depth,
 
@@ -145,14 +145,14 @@ func (c Client) ConfirmCrawled(
 	depth int,
 ) error {
 	payload := events.ConfirmPayload{
-		Status:     &status,
+		Status:     status,
 		HTTPStatus: httpStatus,
 
 		PageUUID: &pageUUID,
 
 		URI:       &original,
-		FinalURI:  &final,
-		Canonical: &canonical,
+		FinalURI:  final,
+		Canonical: canonical,
 
 		Depth: depth,
 
@@ -184,7 +184,7 @@ func (c Client) Backoff(
 
 	return c.sendPayload(
 		c.keys.Backoff,
-		events.FrontierCrawlConfirm,
+		events.FrontierBackoff,
 		payload,
 	)
 }

@@ -143,6 +143,19 @@ func (m *Map[K, V]) removeByIndex(idx int) {
 	delete(m.indexToKeys, lastIdx)
 }
 
+func (m *Map[K, V]) RemoveKey(key K) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	idx, ok := m.keyToIndex[key]
+	if !ok {
+		return
+	}
+
+	delete(m.keyToIndex, key)
+	delete(m.indexToKeys[idx], key)
+}
+
 func (m *Map[K, V]) RemoveByKey(key K) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

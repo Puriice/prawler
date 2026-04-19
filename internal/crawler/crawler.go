@@ -83,13 +83,13 @@ func (c Crawler) handleCrawlEvent(payload events.CrawlPayload) error {
 	parser, err := html.NewParser(finalURI.String())
 
 	if err != nil {
-		return err
+		return c.client.FailedCrawled(payload.PageUUID, resp.StatusCode, *payload.URI, finalURI.String(), payload.Depth)
 	}
 
 	meta, page, content, err := parser.ParseReader(resp.Body)
 
 	if err != nil {
-		return err
+		return c.client.FailedCrawled(payload.PageUUID, resp.StatusCode, *payload.URI, finalURI.String(), payload.Depth)
 	}
 
 	err = c.websiteRepository.AddPageInformation(c.ctx, payload.PageUUID, *finalURI, payload.Depth, *page)
@@ -144,14 +144,15 @@ func (c Crawler) Handle(data []byte) error {
 
 	switch event.Type {
 	case events.CrawlURI:
-		c.worker.Assign(func() {
-			err := c.handleCrawlEvent(event.Payload)
-
-			if err != nil {
+		err := c.worker.Assign(func() {
+			if err := c.handleCrawlEvent(event.Payload); err != nil {
 				log.Println(err)
 			}
 		})
 
+		if err != nil {
+			log.Println(err)
+		}
 	}
 	return nil
 }

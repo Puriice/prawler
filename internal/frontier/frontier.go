@@ -131,6 +131,18 @@ func (m *FrontierNode) Setup(
 	if err != nil {
 		log.Println(err)
 	}
+
+	err = m.rabbit.Channel.QueueBind(
+		m.config.ExchangeName.Backoff,
+		m.config.ExchangeName.Backoff,
+		m.config.ExchangeName.Backoff,
+		false,
+		nil,
+	)
+
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 func (m *FrontierNode) handleNodeStatusChanges(node heartbeat.Node) {
@@ -176,7 +188,7 @@ func (m FrontierNode) handleURIRegister(payload events.URIPayload) error {
 		return nil
 	}
 
-	if !rbs.IsAllow(m.config.CrawlingPolicy.UserAgent, *payload.URI) {
+	if !rbs.IsAllow(m.config.CrawlingPolicy.UserAgent, *payload.URI) && url.Hostname() != "localhost" {
 		return nil
 	}
 
@@ -241,13 +253,14 @@ func (m FrontierNode) backingOff(p events.BackoffPayload) error {
 	}
 
 	sitekey := uri.SiteKey(*url)
+	attempt := m.backoff.Attempt(sitekey)
 
-	if m.backoff.Attempt(sitekey) > m.config.CrawlingPolicy.MaximumCrawlingAttempt {
+	if attempt >= m.config.CrawlingPolicy.MaximumCrawlingAttempt {
 		log.Printf("Maximum attempt exceeded for: %s", sitekey)
 		m.blacklists.Add(sitekey)
 	} else {
 		delay := m.backoff.Add(sitekey, p.HTTPStatus, p.RetryAfter)
-		log.Printf("Retry %s After %ds", sitekey, delay)
+		log.Printf("[Attempt #%d] Retry %s After %.0fs", attempt, sitekey, delay.Seconds())
 		now := time.Now()
 
 		payloadBody := events.URIPayload{
@@ -272,7 +285,7 @@ func (m FrontierNode) backingOff(p events.BackoffPayload) error {
 			return err
 		}
 
-		m.rabbit.Channel.Publish(
+		return m.rabbit.Channel.Publish(
 			m.config.ExchangeName.Backoff,
 			m.config.ExchangeName.Backoff,
 			false,
@@ -289,32 +302,32 @@ func (m FrontierNode) backingOff(p events.BackoffPayload) error {
 }
 
 func (m FrontierNode) handleConfirmEvent(payload events.ConfirmPayload) error {
-	log.Printf("Crawled %s confirm with status %s:%d", *payload.URI, *payload.Status, payload.HTTPStatus)
+	log.Printf("Crawled %s confirm with status %s:%d", *payload.URI, payload.Status, payload.HTTPStatus)
 	url, err := url.Parse(*payload.URI)
 
 	if err != nil {
 		return err
 	}
 
-	m.websiteRepository.SetPageStatus(m.ctx, *payload.PageUUID, *payload.Status)
+	m.websiteRepository.SetPageStatus(m.ctx, *payload.PageUUID, payload.Status)
 
 	sitekey := uri.SiteKey(*url)
 
 	switch payload.Status {
-	case &enum.Page.Parsed:
+	case enum.Page.Parsed:
 		m.backoff.Reset(sitekey)
 		fallthrough
-	case &enum.Page.Skipped:
+	case enum.Page.Skipped:
 		m.addFilter(*payload.URI)
-		m.addFilter(*payload.Canonical)
-		m.addFilter(*payload.FinalURI)
-	case &enum.Page.Failed:
+		m.addFilter(payload.Canonical)
+		m.addFilter(payload.FinalURI)
+	case enum.Page.Failed:
 		return m.backingOff(
 			events.BackoffPayload{
 				PageUUID: payload.PageUUID,
 				Depth:    payload.Depth,
 
-				URI:        payload.FinalURI,
+				URI:        &payload.FinalURI,
 				HTTPStatus: payload.HTTPStatus,
 				RetryAfter: 0,
 
@@ -334,7 +347,6 @@ func (m FrontierNode) handleBackoffEvent(payload events.BackoffPayload) error {
 }
 
 func (m FrontierNode) Handle(data []byte) error {
-	log.Println("Event Incomming")
 	var event events.FrontierEvent
 
 	err := json.Unmarshal(data, &event)
@@ -348,6 +360,7 @@ func (m FrontierNode) Handle(data []byte) error {
 		log.Println(err)
 		return err
 	}
+	log.Printf("Event Incomming: %s", event.Type)
 
 	switch event.Type {
 	case events.FrontierURIRegister:

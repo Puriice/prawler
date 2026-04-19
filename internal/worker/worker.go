@@ -96,6 +96,7 @@ func (m *WorkerManager) runWorkerOnce(workerId workerID, queue chan Job) {
 			j.Task()
 
 			m.confirmJobDone(jobID)
+			log.Printf("[WORKER ID: %d] finished working on: %d\n", workerId, jobID)
 		case <-m.ctx.Done():
 			return
 		}

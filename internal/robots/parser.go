@@ -98,14 +98,14 @@ func (r RobotParser) Parse(url url.URL) (*Robots, error) {
 
 			log.Printf("Saved %s/robots.txt", originString)
 		}()
+
+		robots.Host = origin
+		robots.Raw = raw
+		robots.Sitemap = grobotstxt.Sitemaps(*robots.Raw)
+		robots.Timestamp = time.Now()
+
+		r.cache[originString] = robots
 	}
-
-	robots.Host = origin
-	robots.Raw = raw
-	robots.Sitemap = grobotstxt.Sitemaps(*robots.Raw)
-	robots.Timestamp = time.Now()
-
-	r.cache[originString] = robots
 
 	return &robots, nil
 
