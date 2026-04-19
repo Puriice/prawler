@@ -258,7 +258,7 @@ func (m FrontierNode) backingOff(p events.BackoffPayload) error {
 	if attempt+1 >= m.config.CrawlingPolicy.MaximumCrawlingAttempt {
 		log.Printf("Maximum attempt exceeded for: %s", sitekey)
 		m.websiteRepository.SetPageStatus(m.ctx, *p.PageUUID, enum.Page.Skipped)
-		m.blacklists.Add(sitekey)
+		m.blacklists.Add(*p.URI)
 	} else {
 		delay := m.backoff.Add(sitekey, p.HTTPStatus, p.RetryAfter)
 		log.Printf("[Attempt #%d] Retry %s After %.0fs", attempt, sitekey, delay.Seconds())
