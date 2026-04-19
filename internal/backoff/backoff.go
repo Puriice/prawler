@@ -61,7 +61,6 @@ func (m *Manager) Add(sitekey string, httpStatus int, retryAfter time.Duration) 
 	// Calculate delay
 	delay := max(retryAfter, m.cfg.BaseDelay)
 	delay *= (1 << s.attempt)
-	delay = min(delay, m.cfg.MaxDelay)
 
 	switch {
 	case httpStatus == 429:
@@ -71,6 +70,8 @@ func (m *Manager) Add(sitekey string, httpStatus int, retryAfter time.Duration) 
 	case httpStatus >= 500:
 		delay *= time.Duration(m.cfg.Multiplier5xx)
 	}
+
+	delay = min(delay, m.cfg.MaxDelay)
 
 	// Apply jitter
 	jitter := time.Duration(rand.Float64() * m.cfg.Jitter * float64(delay))
