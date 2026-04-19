@@ -164,7 +164,7 @@ func (m FrontierNode) handleURIRegister(payload events.URIPayload) error {
 		return nil // Error parsing url return nil because we don't want a retry
 	}
 
-	if payload.Depth > m.config.CrawlingPolicy.MaximumCrawlingDepth {
+	if payload.Depth+1 > m.config.CrawlingPolicy.MaximumCrawlingDepth {
 		return nil
 	}
 
