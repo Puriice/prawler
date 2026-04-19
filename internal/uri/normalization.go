@@ -27,7 +27,7 @@ var defaultIndexPath = set.NewSet(
 	"/index.aspx",
 )
 
-func Normalize(u url.URL) string {
+func Normalize(u url.URL) *url.URL {
 	u.Scheme = strings.ToLower(u.Scheme)
 	u.Host = strings.ToLower(u.Host)
 
@@ -77,5 +77,5 @@ func Normalize(u url.URL) string {
 	}
 
 	u.RawQuery = sortedQ.Encode()
-	return u.String()
+	return &u
 }

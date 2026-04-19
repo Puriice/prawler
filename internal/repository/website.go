@@ -120,14 +120,28 @@ func (r PostgresWebsiteRepository) GetFinishedPage(context context.Context) []Pa
 	return pages
 }
 
-func (r PostgresWebsiteRepository) AddDomain(context context.Context, domain url.URL) error {
-	_, err := r.db.Exec(context, "INSERT INTO domains (scheme, host, port) VALUES ($1, $2, $3) ON CONFLICT (scheme, host, port) DO NOTHING", domain.Scheme, domain.Hostname(), domain.Port())
+func (r PostgresWebsiteRepository) AddDomain(context context.Context, domain url.URL) (string, error) {
+	var uuid string
+
+	err := r.db.QueryRow(
+		context,
+		`INSERT INTO domains (scheme, host, port) 
+		VALUES ($1, $2, $3) 
+		ON CONFLICT (scheme, host, port) 
+		DO UPDATE SET
+			uuid = domains.uuid
+		RETURNING uuid;
+		`,
+		domain.Scheme,
+		domain.Hostname(),
+		domain.Port(),
+	).Scan(&uuid)
 
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	return uuid, nil
 }
 
 func (r PostgresWebsiteRepository) AddRobots(context context.Context, domains url.URL, raw string) error {
@@ -152,17 +166,10 @@ func (r PostgresWebsiteRepository) AddRobots(context context.Context, domains ur
 	return nil
 }
 
-func (r PostgresWebsiteRepository) AddPage(context context.Context, url url.URL, depth int) (string, error) {
-	origin := uri.OriginKey(url)
-	domainUUID, err := queryDomainUUID(context, r.db, origin)
-
-	if err != nil {
-		return "", err
-	}
-
+func (r PostgresWebsiteRepository) AddPage(context context.Context, domainUUID string, url url.URL, depth int) (string, error) {
 	var uuid string
 
-	err = r.db.QueryRow(
+	err := r.db.QueryRow(
 		context,
 		`
 		INSERT INTO pages (domain_uuid, url, depth) 
@@ -298,6 +305,23 @@ func (r PostgresWebsiteRepository) AddPageContent(context context.Context, pageU
 			"token_count",
 		},
 		pgx.CopyFromRows(rows),
+	)
+
+	return err
+}
+
+func (r PostgresWebsiteRepository) AddLink(context context.Context, sourceUUID string, targetUUID string, anchorText string) error {
+	_, err := r.db.Exec(
+		context,
+		`
+		INSERT INTO links (source_page_uuid, target_page_uuid, anchor_text) 
+		VALUES ($1, $2, $3)
+		ON CONFLICT (source_page_uuid, target_page_uuid, anchor_text)
+		DO NOTHING;
+		`,
+		sourceUUID,
+		targetUUID,
+		anchorText,
 	)
 
 	return err

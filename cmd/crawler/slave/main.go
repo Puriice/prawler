@@ -86,7 +86,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	worker := worker.NewManager(ctx, 3)
+	worker := worker.NewManager(ctx, 5)
 	worker.SpawnWorker()
 
 	crawler := crawler.NewCrawler(ctx, cfg.CrawlingPolicy.UserAgent, webRecordsRepository, fetcher, client, worker)

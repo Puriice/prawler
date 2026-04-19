@@ -61,12 +61,13 @@ func (c Client) sendPayload(key string, eventType events.FrontierEventType, payl
 	})
 }
 
-func (c Client) Register(uri string, depth int) error {
+func (c Client) Register(uri string, depth int, source *events.Source) error {
 	now := time.Now()
 
 	payload := events.URIPayload{
 		URI:       &uri,
 		Depth:     depth,
+		Source:    source,
 		Timestamp: &now,
 	}
 

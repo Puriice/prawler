@@ -115,7 +115,10 @@ func (c Crawler) handleCrawlEvent(payload events.CrawlPayload) error {
 			continue
 		}
 
-		c.client.Register(link.TargetURL, payload.Depth+1)
+		c.client.Register(link.TargetURL, payload.Depth+1, &events.Source{
+			PageUUID:   &payload.PageUUID,
+			AnchorText: link.AnchorText,
+		})
 	}
 
 	return c.client.ConfirmCrawled(

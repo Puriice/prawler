@@ -22,12 +22,13 @@ type WebsiteRepository interface {
 	GetRobots(context context.Context, domain url.URL) (*string, *time.Time, error)
 	GetFinishedPage(context context.Context) []Page
 
-	AddDomain(context context.Context, domain url.URL) error
+	AddDomain(context context.Context, domain url.URL) (string, error)
 	AddRobots(context context.Context, domain url.URL, raw string) error
-	AddPage(context context.Context, url url.URL, depth int) (string, error)
+	AddPage(context context.Context, domainUUID string, url url.URL, depth int) (string, error)
 	AddPageInformation(context context.Context, pageUUID string, url url.URL, depth int, page html.Page) error
 	AddPageMetadata(context context.Context, pageUUID string, meta html.PageMetaData) error
 	AddPageContent(context context.Context, pageUUID string, content html.PageContent) error
+	AddLink(context context.Context, sourceUUID string, targetUUID string, anchorText string) error
 
 	SetPageStatus(context context.Context, pageUUID string, status enum.PageStatus) error
 	BlacklistDomain(context context.Context, domain url.URL) error

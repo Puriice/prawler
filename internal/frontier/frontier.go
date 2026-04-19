@@ -172,13 +172,33 @@ func (m FrontierNode) handleURIRegister(payload events.URIPayload) error {
 	normalizedURI := uri.Normalize(*url)
 	siteKey := uri.SiteKey(*url)
 
-	m.websiteRepository.AddDomain(m.ctx, origin)
+	normalizedURIString := normalizedURI.String()
+
+	domainUUID, err := m.websiteRepository.AddDomain(m.ctx, origin)
+
+	if err != nil {
+		return err
+	}
+
+	pageUUID, err := m.websiteRepository.AddPage(m.ctx, domainUUID, *normalizedURI, payload.Depth)
+
+	if err != nil {
+		return err
+	}
+
+	if payload.Source != nil && payload.Source.IsValid() == nil {
+		err := m.websiteRepository.AddLink(m.ctx, *payload.Source.PageUUID, pageUUID, payload.Source.AnchorText)
+
+		if err != nil {
+			log.Println(err)
+		}
+	}
 
 	if m.blacklists.Contains(siteKey) {
 		return nil
 	}
 
-	if m.filter.Contains(normalizedURI) {
+	if m.filter.Contains(normalizedURIString) {
 		return nil
 	}
 
@@ -188,14 +208,8 @@ func (m FrontierNode) handleURIRegister(payload events.URIPayload) error {
 		return nil
 	}
 
-	if !rbs.IsAllow(m.config.CrawlingPolicy.UserAgent, *payload.URI) && url.Hostname() != "localhost" {
+	if !rbs.IsAllow(m.config.CrawlingPolicy.UserAgent, normalizedURIString) && url.Hostname() != "localhost" {
 		return nil
-	}
-
-	pageUUID, err := m.websiteRepository.AddPage(m.ctx, *url, payload.Depth)
-
-	if err != nil {
-		return err
 	}
 
 	crawlerUUID, ok := m.planner.Plan(siteKey)
@@ -217,7 +231,7 @@ func (m FrontierNode) handleURIRegister(payload events.URIPayload) error {
 		Type: events.CrawlURI,
 		Payload: events.CrawlPayload{
 			URIPayload: events.URIPayload{
-				URI:       &normalizedURI,
+				URI:       &normalizedURIString,
 				Timestamp: &now,
 			},
 			PageUUID: pageUUID,
@@ -242,7 +256,7 @@ func (m FrontierNode) addFilter(u string) {
 	}
 
 	normalized := uri.Normalize(*url)
-	m.filter.Add(normalized)
+	m.filter.Add(normalized.String())
 }
 
 func (m FrontierNode) backingOff(p events.BackoffPayload) error {

@@ -14,7 +14,7 @@
 	"queue_name": "prawler.uri",
 	"policy": {
 		"user_agent": "prawler",
-		"crawling_delay_ms": 1000,
+		"crawling_delay_ms": 0,
 		"maximum_crawling_depth": 5,
 		"maximum_crawling_attempt": 5
 	}
