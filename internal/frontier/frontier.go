@@ -67,7 +67,7 @@ func NewFrontierNode(
 		planner: planner.NewPlanner[string, string](),
 		filter:  filter,
 
-		backoff: backoff.NewManager(backoff.Default()),
+		backoff: backoff.NewManager(),
 		worker:  worker.NewManager(ctx, 3),
 	}
 }

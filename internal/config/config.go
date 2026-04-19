@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/purrice/prawler/internal/file"
 )
@@ -26,11 +27,20 @@ type ExchangeConfig struct {
 	Backoff    string `json:"backoff"`
 }
 
+type BackoffPolicy struct {
+	Jitter        float64 `json:"jitter"`
+	Multiplier429 float64 `json:"multiplier_429"`
+	Multiplier503 float64 `json:"multiplier_503"`
+	Multiplier5XX float64 `json:"multiplier_5XX"`
+}
+
 type CrawlingPolicy struct {
-	UserAgent              string `json:"user_agent"`
-	CrawlingDelayInMS      int    `json:"crawling_delay_ms"`
-	MaximumCrawlingDepth   int    `json:"maximum_crawling_depth"`
-	MaximumCrawlingAttempt int    `json:"maximum_crawling_attempt"`
+	UserAgent                string        `json:"user_agent"`
+	Backoff                  BackoffPolicy `json:"backoff"`
+	MinimumCrawlingDelayInMS time.Duration `json:"minimum_crawling_delay_ms"`
+	MaximumCrawlingDelayInMS time.Duration `json:"maximum_crawling_delay_ms"`
+	MaximumCrawlingDepth     int           `json:"maximum_crawling_depth"`
+	MaximumCrawlingAttempt   int           `json:"maximum_crawling_attempt"`
 }
 
 type Config struct {
@@ -56,10 +66,17 @@ func Default() *Config {
 		},
 		QueueName: "prawler.uri",
 		CrawlingPolicy: CrawlingPolicy{
-			UserAgent:              "prawler",
-			CrawlingDelayInMS:      1000,
-			MaximumCrawlingDepth:   5,
-			MaximumCrawlingAttempt: 5,
+			UserAgent: "prawler",
+			Backoff: BackoffPolicy{
+				Jitter:        0.5,
+				Multiplier429: 2,
+				Multiplier503: 3,
+				Multiplier5XX: 2.5,
+			},
+			MinimumCrawlingDelayInMS: time.Duration(3000),
+			MaximumCrawlingDelayInMS: time.Duration(60000),
+			MaximumCrawlingDepth:     5,
+			MaximumCrawlingAttempt:   5,
 		},
 	}
 }
@@ -75,6 +92,9 @@ func initConfig() {
 	if err != nil {
 		config = Default()
 	}
+
+	config.CrawlingPolicy.MinimumCrawlingDelayInMS = config.CrawlingPolicy.MinimumCrawlingDelayInMS * time.Millisecond
+	config.CrawlingPolicy.MaximumCrawlingDelayInMS = config.CrawlingPolicy.MaximumCrawlingDelayInMS * time.Millisecond
 }
 
 func GetConfig() *Config {

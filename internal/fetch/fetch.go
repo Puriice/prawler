@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/url"
 	"sync"
-	"time"
 
 	"github.com/purrice/prawler/internal/config"
 	"github.com/purrice/prawler/internal/uri"
@@ -38,7 +37,7 @@ func (f *Fetcher) getLimiter(origin string) *rate.Limiter {
 		return limiter
 	}
 
-	delay := time.Duration(config.GetConfig().CrawlingPolicy.CrawlingDelayInMS) * time.Millisecond
+	delay := config.GetConfig().CrawlingPolicy.MinimumCrawlingDelayInMS
 	limiter = rate.NewLimiter(rate.Every(delay), 1)
 
 	f.mu.Lock()

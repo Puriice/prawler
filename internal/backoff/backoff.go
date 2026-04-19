@@ -4,6 +4,8 @@ import (
 	"math/rand"
 	"sync"
 	"time"
+
+	"github.com/purrice/prawler/internal/config"
 )
 
 type Config struct {
@@ -24,25 +26,13 @@ type state struct {
 type Manager struct {
 	mu     sync.Mutex
 	states map[string]*state
-	cfg    Config
+	cfg    *config.Config
 }
 
-func Default() Config {
-	return Config{
-		BaseDelay: 3 * time.Second,
-		MaxDelay:  60 * time.Second,
-		Jitter:    0.5,
-
-		Multiplier429: 2,
-		Multiplier503: 3,
-		Multiplier5xx: 2.5,
-	}
-}
-
-func NewManager(cfg Config) *Manager {
+func NewManager() *Manager {
 	return &Manager{
 		states: make(map[string]*state),
-		cfg:    cfg,
+		cfg:    config.GetConfig(),
 	}
 }
 
@@ -59,22 +49,22 @@ func (m *Manager) Add(sitekey string, httpStatus int, retryAfter time.Duration) 
 	now := time.Now()
 
 	// Calculate delay
-	delay := max(retryAfter, m.cfg.BaseDelay)
+	delay := max(retryAfter, m.cfg.CrawlingPolicy.MinimumCrawlingDelayInMS)
 	delay *= (1 << s.attempt)
 
 	switch {
 	case httpStatus == 429:
-		delay *= time.Duration(m.cfg.Multiplier429)
+		delay *= time.Duration(m.cfg.CrawlingPolicy.Backoff.Multiplier429)
 	case httpStatus == 503:
-		delay *= time.Duration(m.cfg.Multiplier503)
+		delay *= time.Duration(m.cfg.CrawlingPolicy.Backoff.Multiplier503)
 	case httpStatus >= 500:
-		delay *= time.Duration(m.cfg.Multiplier5xx)
+		delay *= time.Duration(m.cfg.CrawlingPolicy.Backoff.Multiplier5XX)
 	}
 
-	delay = min(delay, m.cfg.MaxDelay)
+	delay = min(delay, m.cfg.CrawlingPolicy.MaximumCrawlingDelayInMS)
 
 	// Apply jitter
-	jitter := time.Duration(rand.Float64() * m.cfg.Jitter * float64(delay))
+	jitter := time.Duration(rand.Float64() * m.cfg.CrawlingPolicy.Backoff.Jitter * float64(delay))
 	delay = delay + jitter
 
 	// Update state
