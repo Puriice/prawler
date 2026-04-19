@@ -49,7 +49,7 @@ func main() {
 	websiteRepository := repository.NewPostgresWebsiteRepository(db)
 
 	filter := set.NewSet[string]()
-	frontier := frontier.NewFrontierNode(ctx, rabbit, &filter)
+	frontier := frontier.NewFrontierNode(ctx, rabbit, filter)
 	frontier.Setup(
 		crawlerRepository,
 		websiteRepository,

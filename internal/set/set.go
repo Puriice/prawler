@@ -1,27 +1,43 @@
 package set
 
-type Set[K comparable] map[K]struct{}
+import "sync"
 
-func NewSet[K comparable](init ...K) Set[K] {
-	set := make(map[K]struct{}, len(init))
+type Set[K comparable] struct {
+	m  map[K]struct{}
+	mu sync.RWMutex
+}
+
+func NewSet[K comparable](init ...K) *Set[K] {
+	set := &Set[K]{
+		m: make(map[K]struct{}, len(init)),
+	}
 
 	for _, value := range init {
-		set[value] = struct{}{}
+		set.m[value] = struct{}{}
 	}
 
 	return set
 }
 
 func (s *Set[K]) Add(value K) {
-	(*s)[value] = struct{}{}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.m[value] = struct{}{}
 }
 
 func (s *Set[K]) Remove(value K) {
-	delete(*s, value)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	delete(s.m, value)
 }
 
 func (s *Set[K]) Contains(value K) bool {
-	_, exist := (*s)[value]
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	_, exist := s.m[value]
 
 	return exist
 }
