@@ -22,6 +22,7 @@ import (
 	"github.com/purrice/prawler/internal/planner"
 	"github.com/purrice/prawler/internal/repository"
 	"github.com/purrice/prawler/internal/robots"
+	"github.com/purrice/prawler/internal/set"
 	"github.com/purrice/prawler/internal/uri"
 	"github.com/purrice/prawler/internal/worker"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -44,11 +45,12 @@ type FrontierNode struct {
 	websiteRepository repository.WebsiteRepository
 	crawlerRepository repository.CrawlerRepository
 
-	blacklists  *blacklists.Blacklists
-	robotParser *robots.RobotParser
-	holter      *heartbeat.Holter
-	planner     *planner.Planner[string, string]
-	filter      Filter
+	blacklists     *blacklists.Blacklists
+	robotParser    *robots.RobotParser
+	holter         *heartbeat.Holter
+	planner        *planner.Planner[string, string]
+	filter         Filter
+	crawlingFilter *set.Set[string]
 
 	backoff *backoff.Manager
 	worker  *worker.WorkerManager
@@ -63,9 +65,10 @@ func NewFrontierNode(
 		ctx:    ctx,
 		config: config.GetConfig(),
 
-		rabbit:  rabbit,
-		planner: planner.NewPlanner[string, string](),
-		filter:  filter,
+		rabbit:         rabbit,
+		planner:        planner.NewPlanner[string, string](),
+		filter:         filter,
+		crawlingFilter: set.NewSet[string](),
 
 		backoff: backoff.NewManager(),
 		worker:  worker.NewManager(ctx, 3),
@@ -202,6 +205,10 @@ func (m FrontierNode) handleURIRegister(payload events.URIPayload) error {
 		return nil
 	}
 
+	if m.crawlingFilter.Contains(normalizedURIString) {
+		return nil
+	}
+
 	rbs, err := m.robotParser.Parse(*url)
 
 	if err != nil {
@@ -244,6 +251,8 @@ func (m FrontierNode) handleURIRegister(payload events.URIPayload) error {
 	if err != nil {
 		return err
 	}
+
+	m.crawlingFilter.Add(normalizedURIString)
 
 	return nil
 }
@@ -317,16 +326,20 @@ func (m FrontierNode) backingOff(p events.BackoffPayload) error {
 }
 
 func (m FrontierNode) handleConfirmEvent(payload events.ConfirmPayload) error {
-	log.Printf("Crawled %s confirm with status %s:%d", *payload.URI, payload.Status, payload.HTTPStatus)
 	url, err := url.Parse(*payload.URI)
 
 	if err != nil {
 		return err
 	}
 
+	log.Printf("Crawled %s confirm with status %s:%d", *payload.URI, payload.Status, payload.HTTPStatus)
+
 	m.websiteRepository.SetPageStatus(m.ctx, *payload.PageUUID, payload.Status)
 
 	sitekey := uri.SiteKey(*url)
+	normalized := uri.Normalize(*url)
+
+	m.crawlingFilter.Remove(normalized.String())
 
 	switch payload.Status {
 	case enum.Page.Parsed:
@@ -355,8 +368,17 @@ func (m FrontierNode) handleConfirmEvent(payload events.ConfirmPayload) error {
 }
 
 func (m FrontierNode) handleBackoffEvent(payload events.BackoffPayload) error {
+	url, err := url.Parse(*payload.URI)
+
+	if err != nil {
+		return err
+	}
+
 	log.Printf("Crawled %s Failed with status %d backoff for the moment", *payload.URI, payload.HTTPStatus)
 	m.websiteRepository.SetPageStatus(m.ctx, *payload.PageUUID, enum.Page.Failed)
+
+	normalized := uri.Normalize(*url)
+	m.crawlingFilter.Remove(normalized.String())
 
 	return m.backingOff(payload)
 }

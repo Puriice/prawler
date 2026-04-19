@@ -20,7 +20,7 @@
 			"multiplier_503": 3,
 			"multiplier_5XX": 2.5
 		},
-		"minimum_crawling_delay_ms": 1000,
+		"minimum_crawling_delay_ms": 3000,
 		"maximum_crawling_delay_ms": 60000,
 		"maximum_crawling_depth": 5,
 		"maximum_crawling_attempt": 5
