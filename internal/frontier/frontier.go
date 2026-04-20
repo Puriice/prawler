@@ -118,6 +118,7 @@ func (m *FrontierNode) Setup(
 
 	pages := websiteRepository.GetFinishedPage(m.ctx)
 
+	log.Printf("Load %d parsed or skipped page", len(pages))
 	for _, page := range pages {
 		m.addFilter(page.URL)
 		m.addFilter(page.CanonicalURL)

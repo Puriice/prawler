@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/puriice/golibs/pkg/pgutils"
 	"github.com/purrice/prawler/internal/enum"
@@ -101,16 +102,17 @@ func (r PostgresWebsiteRepository) GetFinishedPage(context context.Context) []Pa
 		`
 		SELECT 
 			url,
-			canonical_url
+			canonical_url,
 			indexable,
 			depth,
 			checksum
 		FROM pages
-		WHERE status = "Parsed" OR status = "Indexed" OR status = "Skipped"
+		WHERE status = 'Parsed' OR status = 'Indexed' OR status = 'Skipped'
 		`,
 	)
 
 	if err != nil {
+		log.Println(err)
 		return []Page{}
 	}
 	defer rows.Close()
@@ -118,7 +120,8 @@ func (r PostgresWebsiteRepository) GetFinishedPage(context context.Context) []Pa
 	var pages []Page
 
 	for rows.Next() {
-		var url, canonicalURL, checksum string
+		var url string
+		var canonicalURL, checksum pgtype.Text
 		var depth int
 		var indexable bool
 
@@ -128,15 +131,16 @@ func (r PostgresWebsiteRepository) GetFinishedPage(context context.Context) []Pa
 			URL:   url,
 			Depth: depth,
 			Page: html.Page{
-				CanonicalURL: canonicalURL,
+				CanonicalURL: canonicalURL.String,
 				NoIndex:      !indexable,
 				NoFollow:     false,
-				Checksum:     checksum,
+				Checksum:     checksum.String,
 			},
 		})
 	}
 
-	if rows.Err() != nil {
+	if err := rows.Err(); err != nil {
+		log.Println(err)
 		return []Page{}
 	}
 

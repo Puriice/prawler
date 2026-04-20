@@ -1,5 +1,5 @@
 {
-	"version": 1.0,
+	"version": 1.2,
 	"contact": {
 		"email": "purinutt.amartayavis@g.swu.ac.th",
 		"description": "Educational Project",
@@ -14,7 +14,7 @@
 	},
 	"queue_name": "prawler.uri",
 	"policy": {
-		"user_agent": "prawler",
+		"user_agent": "Prawler",
 		"backoff": {
 			"jitter": 0.5,
 			"multiplier_429": 2,

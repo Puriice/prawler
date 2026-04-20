@@ -181,6 +181,7 @@ var lorem = []string{
 
 func makeHandler(port int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("User-Agent: %s", r.UserAgent())
 		rng := newRand()
 
 		// ── route: /  →  index page ──────────────────────────────────────────
@@ -304,10 +305,7 @@ func main() {
 	var wg sync.WaitGroup
 
 	for _, port := range ports {
-		port := port // capture
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			mux := http.NewServeMux()
 			mux.HandleFunc("/", makeHandler(port))
 
@@ -316,7 +314,7 @@ func main() {
 			if err := http.ListenAndServe(addr, mux); err != nil {
 				log.Fatalf("port %d: %v", port, err)
 			}
-		}()
+		})
 	}
 
 	wg.Wait()
