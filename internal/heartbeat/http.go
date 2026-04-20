@@ -19,7 +19,7 @@ func (h *Holter) handleInit(w http.ResponseWriter, r *http.Request) {
 
 	uuid, err := h.repo.AcquireDeadUUID(h.ctx)
 
-	if err == nil {
+	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
