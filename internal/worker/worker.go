@@ -123,21 +123,21 @@ func (m *WorkerManager) Assign(task Task) error {
 	return m.enqueue(jobID, workerID, task)
 }
 
-func (m *WorkerManager) AssignTo(workerID workerID, task Task) error {
+func (m *WorkerManager) AssignTo(worker int, task Task) error {
 	m.mu.Lock()
 	jobID := m.currentJobId
 	m.currentJobId++
 
-	_, exist := m.workers[workerID]
+	_, exist := m.workers[workerID(worker)]
 	m.mu.Unlock()
 
 	if !exist {
 		return ErrWorkerNotExist
 	}
 
-	m.planner.Assign(jobID, workerID)
+	m.planner.Assign(jobID, workerID(worker))
 
-	return m.enqueue(jobID, workerID, task)
+	return m.enqueue(jobID, workerID(worker), task)
 }
 
 func (m *WorkerManager) enqueue(jobID jobID, workerID workerID, task Task) error {

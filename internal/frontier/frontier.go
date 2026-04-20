@@ -557,21 +557,23 @@ func (m FrontierNode) Run() {
 		Backoff:  fmt.Sprintf("%s.backoff", m.config.ExchangeName.Frontier),
 	}
 
-	URIListenerConfig := messaging.NewRabbitListenerConfig(keys.Register, keys.Register)
-	ConfirmListenerConfig := messaging.NewRabbitListenerConfig(keys.Confirm, keys.Confirm)
-	BackoffListenerConfig := messaging.NewRabbitListenerConfig(keys.Backoff, keys.Backoff)
+	uriListenerConfig := messaging.NewRabbitListenerConfig(keys.Register, keys.Register)
+	confirmListenerConfig := messaging.NewRabbitListenerConfig(keys.Confirm, keys.Confirm)
+	backoffListenerConfig := messaging.NewRabbitListenerConfig(keys.Backoff, keys.Backoff)
 
-	URIListenerConfig.PrefetchCount = 1
-	ConfirmListenerConfig.PrefetchCount = 1
-	BackoffListenerConfig.PrefetchCount = 1
+	uriListenerConfig.PrefetchCount = 1
+	confirmListenerConfig.PrefetchCount = 1
+	backoffListenerConfig.PrefetchCount = 1
 
-	MigrationListernerConfig := messaging.NewRabbitListenerConfig(
+	migrationListernerConfig := messaging.NewRabbitListenerConfig(
 		m.config.ExchangeName.Frontier,
 		fmt.Sprintf("%s.#", m.config.ExchangeName.Frontier),
 	)
+	migrationListernerConfig.PrefetchCount = 1
+	migrationListernerConfig.Binding = false
 
 	m.worker.AssignTo(3, func() {
-		listener, err := broker.NewListenerWithConfig(URIListenerConfig)
+		listener, err := broker.NewListenerWithConfig(uriListenerConfig)
 
 		if err != nil {
 			log.Println(err)
@@ -585,7 +587,7 @@ func (m FrontierNode) Run() {
 	})
 
 	m.worker.AssignTo(4, func() {
-		listener, err := broker.NewListenerWithConfig(ConfirmListenerConfig)
+		listener, err := broker.NewListenerWithConfig(confirmListenerConfig)
 
 		if err != nil {
 			log.Println(err)
@@ -599,7 +601,7 @@ func (m FrontierNode) Run() {
 	})
 
 	m.worker.AssignTo(5, func() {
-		listener, err := broker.NewListenerWithConfig(BackoffListenerConfig)
+		listener, err := broker.NewListenerWithConfig(backoffListenerConfig)
 
 		if err != nil {
 			log.Println(err)
@@ -613,7 +615,7 @@ func (m FrontierNode) Run() {
 	})
 
 	m.worker.AssignTo(6, func() {
-		listener, err := broker.NewListenerWithConfig(MigrationListernerConfig)
+		listener, err := broker.NewListenerWithConfig(migrationListernerConfig)
 
 		if err != nil {
 			log.Println(err)

@@ -24,6 +24,29 @@ func NewPostgresWebsiteRepository(db *pgxpool.Pool) PostgresWebsiteRepository {
 	return PostgresWebsiteRepository{db: db}
 }
 
+func (r PostgresWebsiteRepository) GetUnembeddedPages(context context.Context) ([]string, error) {
+	rows, err := r.db.Query(
+		context,
+		`
+		SELECT DISTINCT p.id::text
+		FROM   pages p
+		JOIN   chunks c ON c.page_id = p.id
+		WHERE  p.noindex   = false
+		AND  p.status   != 'failed'
+		AND  p.status   != 'skipped'
+		AND  c.embedding IS NULL
+		`,
+	)
+
+	if err != nil {
+		return []string{}, err
+	}
+
+	pageUUIDs, err := pgx.CollectRows(rows, pgx.RowTo[string])
+
+	return pageUUIDs, err
+}
+
 func (r PostgresWebsiteRepository) GetBlacklistDomain(context context.Context) []string {
 	rows, err := r.db.Query(context, "SELECT scheme, host, port FROM domains WHERE crawl_allowed = false")
 
