@@ -53,6 +53,13 @@ func NewManager(ctx context.Context, workerCount int, queueSizePerWorker int) *W
 	return manager
 }
 
+func (m *WorkerManager) Count() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	return len(m.workers)
+}
+
 func (m *WorkerManager) confirmJobDone(jobId jobID) {
 	m.planner.Done(jobId)
 }

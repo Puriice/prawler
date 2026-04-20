@@ -12,7 +12,9 @@ import (
 	"github.com/purrice/prawler/internal/events"
 	"github.com/purrice/prawler/internal/frontier"
 	"github.com/purrice/prawler/internal/html"
+	"github.com/purrice/prawler/internal/planner"
 	"github.com/purrice/prawler/internal/repository"
+	"github.com/purrice/prawler/internal/uri"
 	"github.com/purrice/prawler/internal/worker"
 )
 
@@ -27,7 +29,9 @@ type Crawler struct {
 	websiteRepository repository.WebsiteRepository
 	fetcher           Fetcher
 	client            frontier.Client
-	worker            *worker.WorkerManager
+
+	planner *planner.Planner[string, int]
+	worker  *worker.WorkerManager
 }
 
 func NewCrawler(
@@ -38,13 +42,21 @@ func NewCrawler(
 	frontier frontier.Client,
 	worker *worker.WorkerManager,
 ) Crawler {
+	planner := planner.NewPlanner[string, int]()
+
+	for i := range worker.Count() {
+		planner.AddResource(i)
+	}
+
 	return Crawler{
 		ctx:               ctx,
 		agent:             userAgent,
 		websiteRepository: webRecordRepo,
 		fetcher:           fetcher,
 		client:            frontier,
-		worker:            worker,
+
+		worker:  worker,
+		planner: planner,
 	}
 }
 
@@ -145,9 +157,28 @@ func (c Crawler) Handle(data []byte) error {
 		return err
 	}
 
+	if err := event.Payload.IsValid(); err != nil {
+		return err
+	}
+
 	switch event.Type {
 	case events.CrawlURI:
-		err := c.worker.Assign(func() {
+		url, err := url.Parse(*event.Payload.URI)
+
+		if err != nil {
+			return nil
+		}
+
+		siteKey := uri.SiteKey(*url)
+
+		workerId, ok := c.planner.Plan(siteKey)
+
+		if !ok {
+			log.Println(worker.ErrMaximumWorkerCapacity)
+			return worker.ErrMaximumWorkerCapacity
+		}
+
+		err = c.worker.AssignTo(workerId, func() {
 			if err := c.handleCrawlEvent(event.Payload); err != nil {
 				log.Println(err)
 			}
@@ -157,5 +188,6 @@ func (c Crawler) Handle(data []byte) error {
 			log.Println(err)
 		}
 	}
+
 	return nil
 }
