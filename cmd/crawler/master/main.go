@@ -60,5 +60,6 @@ func main() {
 	server.Start()
 
 	frontier.Run()
+	<-ctx.Done()
 	log.Println("Shuting down")
 }

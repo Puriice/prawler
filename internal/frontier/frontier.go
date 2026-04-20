@@ -71,7 +71,7 @@ func NewFrontierNode(
 		crawlingFilter: set.NewSet[string](),
 
 		backoff: backoff.NewManager(),
-		worker:  worker.NewManager(ctx, 6),
+		worker:  worker.NewManager(ctx, 7),
 	}
 }
 
@@ -80,7 +80,11 @@ func (m *FrontierNode) Setup(
 	websiteRepository repository.WebsiteRepository,
 	mux *http.ServeMux,
 ) {
-	robotParser := robots.NewRobotParser(websiteRepository, fetch.NewFecter(nil))
+	client := &http.Client{
+		Timeout: 5 * time.Second,
+	}
+
+	robotParser := robots.NewRobotParser(websiteRepository, fetch.NewFecter(client))
 	blacklists := blacklists.NewBlacklist(websiteRepository)
 
 	holter := heartbeat.NewHolter(m.ctx, 5*time.Second, 10*time.Second, 2*time.Second, crawlerRepository)
@@ -456,6 +460,67 @@ func (m FrontierNode) Handle(data []byte) error {
 	return nil
 }
 
+func (m FrontierNode) handleMigration(data []byte) error {
+	var event events.FrontierEvent
+
+	err := json.Unmarshal(data, &event)
+
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	if err := event.IsValid(); err != nil {
+		log.Println(err)
+		return err
+	}
+	log.Printf("Event Incomming: %s start migrating", event.Type)
+
+	keys := keys{
+		Register: fmt.Sprintf("%s.uri", m.config.ExchangeName.Frontier),
+		Confirm:  fmt.Sprintf("%s.confirm", m.config.ExchangeName.Frontier),
+		Backoff:  fmt.Sprintf("%s.backoff", m.config.ExchangeName.Frontier),
+	}
+
+	switch event.Type {
+	case events.FrontierURIRegister:
+		m.rabbit.Channel.Publish(
+			m.config.ExchangeName.Frontier,
+			keys.Register,
+			false,
+			false,
+			amqp.Publishing{
+				ContentType: "application/json",
+				Body:        data,
+			},
+		)
+	case events.FrontierCrawlConfirm:
+		m.rabbit.Channel.Publish(
+			m.config.ExchangeName.Frontier,
+			keys.Confirm,
+			false,
+			false,
+			amqp.Publishing{
+				ContentType: "application/json",
+				Body:        data,
+			},
+		)
+	case events.FrontierBackoff:
+		m.rabbit.Channel.Publish(
+			m.config.ExchangeName.Frontier,
+			keys.Backoff,
+			false,
+			false,
+			amqp.Publishing{
+				ContentType: "application/json",
+				Body:        data,
+			},
+		)
+	}
+
+	return nil
+}
+
 func (m FrontierNode) Run() {
 	broker, err := m.rabbit.NewBroker(m.config.ExchangeName.Frontier)
 
@@ -492,6 +557,11 @@ func (m FrontierNode) Run() {
 	URIListenerConfig := messaging.NewRabbitListenerConfig(keys.Register, keys.Register)
 	ConfirmListenerConfig := messaging.NewRabbitListenerConfig(keys.Confirm, keys.Confirm)
 	BackoffListenerConfig := messaging.NewRabbitListenerConfig(keys.Backoff, keys.Backoff)
+
+	MigrationListernerConfig := messaging.NewRabbitListenerConfig(
+		m.config.ExchangeName.Frontier,
+		fmt.Sprintf("%s.#", m.config.ExchangeName.Frontier),
+	)
 
 	m.worker.AssignTo(3, func() {
 		listener, err := broker.NewListenerWithConfig(URIListenerConfig)
@@ -531,6 +601,20 @@ func (m FrontierNode) Run() {
 
 		log.Printf("Start listening to slave producing %s events.", keys.Backoff)
 		if err := listener.Subscribe(m.ctx, m.Handle); err != nil {
+			log.Println(err)
+		}
+	})
+
+	m.worker.AssignTo(6, func() {
+		listener, err := broker.NewListenerWithConfig(MigrationListernerConfig)
+
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		log.Println("Start migration")
+		if err := listener.Subscribe(m.ctx, m.handleMigration); err != nil {
 			log.Println(err)
 		}
 	})
