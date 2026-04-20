@@ -93,6 +93,8 @@ func (p *Parser) Parse(rawHTML string) (*PageMetaData, *Page, *PageContent, erro
 
 	page := &parsedPage{}
 
+	page.PageContent.RawHTML = rawHTML
+
 	// 1. metadata from <head>
 	p.extractHead(doc, page)
 
