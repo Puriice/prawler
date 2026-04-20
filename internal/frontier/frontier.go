@@ -41,6 +41,7 @@ type FrontierNode struct {
 	config *config.Config
 
 	rabbit *messaging.RabbitMQ
+	broker *messaging.RabbitBroker
 
 	websiteRepository repository.WebsiteRepository
 	crawlerRepository repository.CrawlerRepository
@@ -61,11 +62,20 @@ func NewFrontierNode(
 	rabbit *messaging.RabbitMQ,
 	filter Filter,
 ) *FrontierNode {
+	config := config.GetConfig()
+	broker, err := rabbit.NewBroker(config.ExchangeName.Frontier)
+
+	if err != nil {
+		return nil
+	}
+
 	return &FrontierNode{
 		ctx:    ctx,
-		config: config.GetConfig(),
+		config: config,
 
-		rabbit:         rabbit,
+		rabbit: rabbit,
+		broker: broker,
+
 		planner:        planner.NewPlanner[string, string](),
 		filter:         filter,
 		crawlingFilter: set.NewSet[string](),
@@ -109,15 +119,13 @@ func (m *FrontierNode) Setup(
 		m.addFilter(page.CanonicalURL)
 	}
 
-	err := m.rabbit.Channel.ExchangeDeclare(
-		m.config.ExchangeName.Backoff,
-		"direct",
-		true,
-		false,
-		false,
-		false,
-		nil,
-	)
+	brokerConfig := messaging.NewBrokerConfig()
+	brokerConfig.Kind = messaging.Direct
+	broker, err := m.rabbit.NewBrokerWithConfig(m.config.ExchangeName.Backoff, brokerConfig)
+
+	if err != nil {
+		return
+	}
 
 	key := fmt.Sprintf("%s.uri", m.config.ExchangeName.Frontier)
 
@@ -126,25 +134,14 @@ func (m *FrontierNode) Setup(
 		"x-dead-letter-routing-key": key,
 	}
 
-	_, err = m.rabbit.Channel.QueueDeclare(
+	listenerConfig := messaging.NewRabbitListenerConfig(
 		m.config.ExchangeName.Backoff,
-		true,
-		false,
-		false,
-		false,
-		args,
+		m.config.ExchangeName.Backoff,
 	)
+	listenerConfig.Args = args
 
-	if err != nil {
-		log.Println(err)
-	}
-
-	err = m.rabbit.Channel.QueueBind(
-		m.config.ExchangeName.Backoff,
-		m.config.ExchangeName.Backoff,
-		m.config.ExchangeName.Backoff,
-		false,
-		nil,
+	_, err = broker.NewListenerWithConfig(
+		listenerConfig,
 	)
 
 	if err != nil {
@@ -313,7 +310,7 @@ func (m FrontierNode) backingOff(p events.BackoffPayload) error {
 			return err
 		}
 
-		return m.rabbit.Channel.Publish(
+		return m.rabbit.Channel().Publish(
 			m.config.ExchangeName.Backoff,
 			m.config.ExchangeName.Backoff,
 			false,
@@ -484,8 +481,7 @@ func (m FrontierNode) handleMigration(data []byte) error {
 
 	switch event.Type {
 	case events.FrontierURIRegister:
-		m.rabbit.Channel.Publish(
-			m.config.ExchangeName.Frontier,
+		m.broker.PublishRaw(
 			keys.Register,
 			false,
 			false,
@@ -495,8 +491,7 @@ func (m FrontierNode) handleMigration(data []byte) error {
 			},
 		)
 	case events.FrontierCrawlConfirm:
-		m.rabbit.Channel.Publish(
-			m.config.ExchangeName.Frontier,
+		m.broker.PublishRaw(
 			keys.Confirm,
 			false,
 			false,
@@ -506,8 +501,7 @@ func (m FrontierNode) handleMigration(data []byte) error {
 			},
 		)
 	case events.FrontierBackoff:
-		m.rabbit.Channel.Publish(
-			m.config.ExchangeName.Frontier,
+		m.broker.PublishRaw(
 			keys.Backoff,
 			false,
 			false,
