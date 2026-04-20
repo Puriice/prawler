@@ -12,6 +12,7 @@ import (
 type CrawlerRepository interface {
 	QueryCrawlerStatus(ctx context.Context) ([]CrawlerStatus, error)
 	AddCrawler(context context.Context, uuid string, timestamp time.Time) error
+	AcquireDeadUUID(context context.Context) (string, error)
 	UpdateCrawlerStatus(ctx context.Context, uuid string, status string, lastSeen time.Time) error
 	RemoveCrawler(ctx context.Context, uuid string) error
 	AssignJob(ctx context.Context, crawlerUUID string, domain url.URL) error

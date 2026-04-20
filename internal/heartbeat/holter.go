@@ -57,7 +57,7 @@ func NewHolter(
 	}
 
 	holter.onChangeHandler[0] = holter.updateCrawlerStatus
-	holter.onTimeoutHandler[0] = holter.removeCrawler
+	holter.onTimeoutHandler[0] = holter.setDeadCrawler
 
 	return holter
 }
@@ -81,8 +81,8 @@ func (h *Holter) updateCrawlerStatus(node Node) {
 	}
 }
 
-func (h *Holter) removeCrawler(node Node) {
-	err := h.repo.RemoveCrawler(h.ctx, node.UUID)
+func (h *Holter) setDeadCrawler(node Node) {
+	err := h.repo.UpdateCrawlerStatus(h.ctx, node.UUID, string(Dead), node.LastSeen)
 
 	if err != nil {
 		log.Println(err)

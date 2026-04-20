@@ -1,11 +1,9 @@
 package heartbeat
 
 import (
-	"log"
 	"net/http"
 	"time"
 
-	guuid "github.com/google/uuid"
 	"github.com/puriice/golibs/pkg/json"
 )
 
@@ -18,39 +16,25 @@ type HeartbeatPayload struct {
 }
 
 func (h *Holter) handleInit(w http.ResponseWriter, r *http.Request) {
-	isError := true
-	uuid := guuid.New()
 
-	for range MAXRETRY {
-		err := h.repo.UpdateCrawlerStatus(h.ctx, uuid.String(), string(Alive), time.Now())
+	uuid, err := h.repo.AcquireDeadUUID(h.ctx)
 
-		if err == nil {
-			isError = false
-			break
-		} else {
-			log.Println(err)
-		}
-
-		uuid = guuid.New()
-	}
-
-	if isError {
+	if err == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	h.mu.Lock()
-	node := h.registerNode(uuid.String())
+	node := h.registerNode(uuid)
 	h.mu.Unlock()
 
 	payload := HeartbeatPayload{
-		UUID: uuid.String(),
+		UUID: uuid,
 	}
 
 	go h.triggerStateChange(*node)
 
 	json.SendJSON(w, 200, payload)
-
 }
 
 func (h *Holter) handleBeats(w http.ResponseWriter, r *http.Request) {
