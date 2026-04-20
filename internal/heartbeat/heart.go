@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -29,6 +31,10 @@ func acquireUUID(client http.Client, endpoint url.URL) (string, error) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != 200 {
+		return "", errors.New(resp.Status)
+	}
+
 	var payload HeartbeatPayload
 
 	err = json.NewDecoder(resp.Body).Decode(&payload)
@@ -53,6 +59,7 @@ func NewHeart(endpoint url.URL, interval *time.Duration) *Heart {
 	uuid, err := acquireUUID(client, endpoint)
 
 	if err != nil {
+		log.Fatal(err)
 		return nil
 	}
 

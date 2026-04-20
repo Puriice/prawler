@@ -1,6 +1,7 @@
 package heartbeat
 
 import (
+	"log"
 	"net/http"
 	"time"
 
@@ -16,11 +17,12 @@ type HeartbeatPayload struct {
 }
 
 func (h *Holter) handleInit(w http.ResponseWriter, r *http.Request) {
-
 	uuid, err := h.repo.AcquireDeadUUID(h.ctx)
 
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		// w.WriteHeader(http.StatusInternalServerError, err)
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 

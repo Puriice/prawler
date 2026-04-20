@@ -59,8 +59,9 @@ func (r PostgresCrawlerRepository) AcquireDeadUUID(ctx context.Context) (string,
 			ctx,
 			`
 			UPDATE crawlers
-			SET status = 'Alive',
-			SET last_seen = $2
+			SET 
+				status = 'Alive',
+				last_seen = $2
 			WHERE uuid = $1
 			`,
 			id,
