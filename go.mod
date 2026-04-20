@@ -7,7 +7,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/jimsmart/grobotstxt v1.0.3
-	github.com/puriice/golibs v1.5.6
+	github.com/puriice/golibs v1.5.7
 	github.com/rabbitmq/amqp091-go v1.10.0
 	golang.org/x/net v0.53.0
 	golang.org/x/time v0.15.0

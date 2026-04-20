@@ -244,6 +244,7 @@ func (m FrontierNode) handleURIRegister(payload events.URIPayload) error {
 		Payload: events.CrawlPayload{
 			URIPayload: events.URIPayload{
 				URI:       &normalizedURIString,
+				Depth:     payload.Depth,
 				Timestamp: &now,
 			},
 			PageUUID: pageUUID,
