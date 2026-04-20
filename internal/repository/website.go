@@ -143,6 +143,26 @@ func (r PostgresWebsiteRepository) GetFinishedPage(context context.Context) []Pa
 	return pages
 }
 
+func (r PostgresWebsiteRepository) GetPageContent(context context.Context, pageUUID string) (html.PageContent, error) {
+	var content html.PageContent
+
+	err := r.db.QueryRow(
+		context,
+		`
+		SELECT raw_html, extracted_text, word_count 
+		FROM page_content
+		WHERE page_uuid = $1;
+		`,
+		pageUUID,
+	).Scan(
+		&content.RawHTML,
+		&content.ExtractedText,
+		&content.WordCount,
+	)
+
+	return content, err
+}
+
 func (r PostgresWebsiteRepository) AddDomain(context context.Context, domain url.URL) (string, error) {
 	var uuid string
 
