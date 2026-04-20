@@ -36,7 +36,7 @@ type WorkerManager struct {
 	workingJob   map[workerID]jobID
 }
 
-func NewManager(ctx context.Context, workerCount int) *WorkerManager {
+func NewManager(ctx context.Context, workerCount int, queueSizePerWorker int) *WorkerManager {
 	manager := &WorkerManager{
 		ctx:     ctx,
 		workers: make(map[workerID]chan Job, workerCount),
@@ -47,7 +47,7 @@ func NewManager(ctx context.Context, workerCount int) *WorkerManager {
 	}
 
 	for i := range workerCount {
-		manager.workers[workerID(i)] = make(chan Job, 1000)
+		manager.workers[workerID(i)] = make(chan Job, queueSizePerWorker)
 	}
 
 	return manager

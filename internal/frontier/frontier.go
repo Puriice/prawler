@@ -81,7 +81,7 @@ func NewFrontierNode(
 		crawlingFilter: set.NewSet[string](),
 
 		backoff: backoff.NewManager(),
-		worker:  worker.NewManager(ctx, 7),
+		worker:  worker.NewManager(ctx, 7, 2),
 	}
 }
 
@@ -551,6 +551,10 @@ func (m FrontierNode) Run() {
 	URIListenerConfig := messaging.NewRabbitListenerConfig(keys.Register, keys.Register)
 	ConfirmListenerConfig := messaging.NewRabbitListenerConfig(keys.Confirm, keys.Confirm)
 	BackoffListenerConfig := messaging.NewRabbitListenerConfig(keys.Backoff, keys.Backoff)
+
+	URIListenerConfig.PrefetchCount = 1
+	ConfirmListenerConfig.PrefetchCount = 1
+	BackoffListenerConfig.PrefetchCount = 1
 
 	MigrationListernerConfig := messaging.NewRabbitListenerConfig(
 		m.config.ExchangeName.Frontier,
