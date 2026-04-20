@@ -27,17 +27,17 @@ func main() {
 	}
 	defer db.Close()
 
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	amqpURL := env.Get("AMQP_URL", "amqp://guest:guest@localhost/")
-	rabbit, err := messaging.NewRabbitMQ(amqpURL)
+	rabbit, err := messaging.NewRabbitMQ(ctx, amqpURL)
 
 	if err != nil {
 		db.Close()
 		log.Fatal(err)
 	}
 	defer rabbit.Shutdown()
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
 
 	host := env.Get("HOST", "")
 	port := env.Get("PORT", "5723")

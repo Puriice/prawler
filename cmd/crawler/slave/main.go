@@ -38,7 +38,7 @@ func main() {
 	heart := heartbeat.NewHeart(*holterEndpoint, nil)
 	go heart.Beat(ctx)
 
-	rabbitMQ, err := messaging.NewRabbitMQ(amqpURL)
+	rabbitMQ, err := messaging.NewRabbitMQ(ctx, amqpURL)
 
 	if err != nil {
 		log.Fatal(err)

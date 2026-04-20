@@ -25,6 +25,7 @@ type ExchangeConfig struct {
 	Blacklists string `json:"blacklists"`
 	Frontier   string `json:"frontier"`
 	Backoff    string `json:"backoff"`
+	Embedding  string `json:"embedding"`
 }
 
 type BackoffPolicy struct {
@@ -63,6 +64,7 @@ func Default() *Config {
 			Blacklists: "prawler.blacklists",
 			Frontier:   "prawler.frontier",
 			Backoff:    "prawler.backoff",
+			Embedding:  "prawler.embedding",
 		},
 		QueueName: "prawler.uri",
 		CrawlingPolicy: CrawlingPolicy{

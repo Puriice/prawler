@@ -40,8 +40,9 @@ type FrontierNode struct {
 	ctx    context.Context
 	config *config.Config
 
-	rabbit *messaging.RabbitMQ
-	broker *messaging.RabbitBroker
+	rabbit     *messaging.RabbitMQ
+	broker     *messaging.RabbitBroker
+	embbedding *messaging.RabbitBroker
 
 	websiteRepository repository.WebsiteRepository
 	crawlerRepository repository.CrawlerRepository
@@ -69,12 +70,15 @@ func NewFrontierNode(
 		return nil
 	}
 
+	embedding, err := rabbit.NewBroker(config.ExchangeName.Embedding)
+
 	return &FrontierNode{
 		ctx:    ctx,
 		config: config,
 
-		rabbit: rabbit,
-		broker: broker,
+		rabbit:     rabbit,
+		broker:     broker,
+		embbedding: embedding,
 
 		planner:        planner.NewPlanner[string, string](),
 		filter:         filter,
@@ -345,6 +349,10 @@ func (m FrontierNode) handleConfirmEvent(payload events.ConfirmPayload) error {
 	switch payload.Status {
 	case enum.Page.Parsed:
 		m.backoff.Reset(sitekey)
+		m.embbedding.Publish(fmt.Sprintf("%s.uuid", m.config.ExchangeName.Embedding), events.EmbeddingEvent{
+			Type:     events.EventEmbedding,
+			PageUUID: *payload.PageUUID,
+		})
 		fallthrough
 	case enum.Page.Skipped:
 		m.addFilter(*payload.URI)

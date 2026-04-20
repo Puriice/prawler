@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"github.com/puriice/golibs/pkg/env"
@@ -19,7 +20,7 @@ func main() {
 	env.Init()
 	amqpURL := env.Get("amqp_url", "amqp://guest:guest@localhost:5672")
 
-	rabbitMQ, err := messaging.NewRabbitMQ(amqpURL)
+	rabbitMQ, err := messaging.NewRabbitMQ(context.Background(), amqpURL)
 
 	if err != nil {
 		log.Fatal(err)
