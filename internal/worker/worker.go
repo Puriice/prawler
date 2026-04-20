@@ -81,7 +81,9 @@ func (m *WorkerManager) runWorkerOnce(workerId workerID, queue chan Job) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("[WORKER ID: %d] panic: %v\n", workerId, r)
+			m.mu.Lock()
 			jobId := m.workingJob[workerId]
+			m.mu.Unlock()
 			m.confirmJobDone(jobId)
 		}
 	}()
@@ -90,7 +92,10 @@ func (m *WorkerManager) runWorkerOnce(workerId workerID, queue chan Job) {
 		select {
 		case j := <-queue:
 			jobID := j.JobID
+
+			m.mu.Lock()
 			m.workingJob[workerId] = jobID
+			m.mu.Unlock()
 
 			log.Printf("[WORKER ID: %d] working on: %d\n", workerId, jobID)
 			j.Task()
