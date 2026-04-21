@@ -147,6 +147,30 @@ func (r PostgresWebsiteRepository) GetFinishedPage(context context.Context) []Pa
 	return pages
 }
 
+func (r PostgresWebsiteRepository) GetLinks(context context.Context, pageUUID string) []string {
+	var links pgtype.Array[string]
+
+	err := r.db.QueryRow(
+		context,
+		`
+		SELECT links 
+		FROM pages
+		WHERE 
+			uuid = $1
+		LIMIT 1;
+		`,
+		pageUUID,
+	).Scan(&links)
+
+	if err != nil || !links.Valid {
+		log.Println(err)
+
+		return []string{}
+	}
+
+	return links.Elements
+}
+
 func (r PostgresWebsiteRepository) GetPageContent(context context.Context, pageUUID string) (html.PageContent, error) {
 	var content html.PageContent
 
@@ -241,6 +265,14 @@ func (r PostgresWebsiteRepository) AddPageInformation(
 	depth int,
 	page html.Page,
 ) error {
+	var links []string
+
+	for _, link := range page.Links {
+		if !link.IsNoFollow {
+			links = append(links, link.TargetURL)
+		}
+	}
+
 	_, err := r.db.Exec(
 		context,
 		`
@@ -250,7 +282,8 @@ func (r PostgresWebsiteRepository) AddPageInformation(
 			canonical_url = $3,
 			depth = $4,
 			indexable = $5,
-			checksum = $6
+			checksum = $6,
+			links = $7
 		WHERE 
 			uuid = $1
 		`,
@@ -260,6 +293,7 @@ func (r PostgresWebsiteRepository) AddPageInformation(
 		depth,
 		!page.NoIndex,
 		page.Checksum,
+		links,
 	)
 
 	return err

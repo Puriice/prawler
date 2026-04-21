@@ -76,6 +76,7 @@ func (c Client) Register(uri string, depth int, source *events.Source) error {
 
 	payload := events.URIPayload{
 		URI:       &uri,
+		Revisit:   false,
 		Depth:     depth,
 		Source:    source,
 		Timestamp: &now,

@@ -22,6 +22,7 @@ type WebsiteRepository interface {
 	GetBlacklistDomain(context context.Context) []string
 	GetRobots(context context.Context, domain url.URL) (*string, *time.Time, error)
 	GetFinishedPage(context context.Context) []Page
+	GetLinks(context context.Context, pageUUID string) []string
 	GetPageContent(context context.Context, pageUUID string) (html.PageContent, error)
 
 	AddDomain(context context.Context, domain url.URL) (string, error)

@@ -40,6 +40,8 @@ type FrontierNode struct {
 	ctx    context.Context
 	config *config.Config
 
+	client Client
+
 	rabbit     *messaging.RabbitMQ
 	broker     *messaging.RabbitBroker
 	embbedding *messaging.RabbitBroker
@@ -52,6 +54,7 @@ type FrontierNode struct {
 	holter         *heartbeat.Holter
 	planner        *planner.Planner[string, string]
 	filter         Filter
+	parsedFilter   *set.Set[string]
 	crawlingFilter *set.Set[string]
 
 	backoff *backoff.Manager
@@ -82,6 +85,7 @@ func NewFrontierNode(
 
 		planner:        planner.NewPlanner[string, string](),
 		filter:         filter,
+		parsedFilter:   set.NewSet[string](),
 		crawlingFilter: set.NewSet[string](),
 
 		backoff: backoff.NewManager(),
@@ -120,8 +124,8 @@ func (m *FrontierNode) Setup(
 
 	log.Printf("Load %d parsed or skipped page", len(pages))
 	for _, page := range pages {
-		m.addFilter(page.URL)
-		m.addFilter(page.CanonicalURL)
+		m.addParsedFilter(page.URL)
+		m.addParsedFilter(page.CanonicalURL)
 	}
 
 	brokerConfig := messaging.NewBrokerConfig()
@@ -165,7 +169,7 @@ func (m *FrontierNode) handleNodeStatusChanges(node heartbeat.Node) {
 	}
 }
 
-func (m FrontierNode) handleURIRegister(payload events.URIPayload) error {
+func (m *FrontierNode) handleURIRegister(payload events.URIPayload) error {
 	url, err := url.Parse(*payload.URI)
 	log.Printf("RECEIVED: %s\n", *payload.URI)
 
@@ -173,12 +177,14 @@ func (m FrontierNode) handleURIRegister(payload events.URIPayload) error {
 		return nil // Error parsing url return nil because we don't want a retry
 	}
 
+	normalizedURI := uri.Normalize(*url)
+
 	if payload.Depth+1 > m.config.CrawlingPolicy.MaximumCrawlingDepth {
+		log.Printf("Maximum depth reached: %s", normalizedURI.String())
 		return nil
 	}
 
 	origin := uri.OriginKey(*url)
-	normalizedURI := uri.Normalize(*url)
 	siteKey := uri.SiteKey(*url)
 
 	normalizedURIString := normalizedURI.String()
@@ -195,7 +201,7 @@ func (m FrontierNode) handleURIRegister(payload events.URIPayload) error {
 		return err
 	}
 
-	if payload.Source != nil && payload.Source.IsValid() == nil {
+	if payload.Source != nil && payload.Source.IsValid() == nil && payload.Source.AnchorText != "" {
 		err := m.websiteRepository.AddLink(m.ctx, *payload.Source.PageUUID, pageUUID, payload.Source.AnchorText)
 
 		if err != nil {
@@ -208,6 +214,45 @@ func (m FrontierNode) handleURIRegister(payload events.URIPayload) error {
 	}
 
 	if m.filter.Contains(normalizedURIString) {
+		return nil
+	}
+
+	if m.parsedFilter.Contains(normalizedURIString) {
+		m.filter.Add(normalizedURIString)
+		links := m.websiteRepository.GetLinks(m.ctx, pageUUID)
+		now := time.Now()
+
+		depth := payload.Depth + 1
+		source := &events.Source{
+			PageUUID:   &pageUUID,
+			AnchorText: "",
+		}
+		key := fmt.Sprintf("%s.uri", m.config.ExchangeName.Frontier)
+
+		for _, link := range links {
+			p := events.URIPayload{
+				URI:       &link,
+				Revisit:   true,
+				Depth:     depth,
+				Source:    source,
+				Timestamp: &now,
+			}
+
+			bytes, err := json.Marshal(p)
+
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+
+			event := events.FrontierEvent{
+				Type:    events.FrontierURIRegister,
+				Payload: bytes,
+			}
+
+			m.broker.Publish(key, event)
+		}
+
 		return nil
 	}
 
@@ -264,7 +309,7 @@ func (m FrontierNode) handleURIRegister(payload events.URIPayload) error {
 	return nil
 }
 
-func (m FrontierNode) addFilter(u string) {
+func (m *FrontierNode) addFilter(u string) {
 	url, err := url.Parse(u)
 
 	if err != nil {
@@ -275,7 +320,18 @@ func (m FrontierNode) addFilter(u string) {
 	m.filter.Add(normalized.String())
 }
 
-func (m FrontierNode) backingOff(p events.BackoffPayload) error {
+func (m *FrontierNode) addParsedFilter(u string) {
+	url, err := url.Parse(u)
+
+	if err != nil {
+		return
+	}
+
+	normalized := uri.Normalize(*url)
+	m.parsedFilter.Add(normalized.String())
+}
+
+func (m *FrontierNode) backingOff(p events.BackoffPayload) error {
 	url, err := url.Parse(*p.URI)
 
 	if err != nil {
@@ -332,7 +388,7 @@ func (m FrontierNode) backingOff(p events.BackoffPayload) error {
 	return nil
 }
 
-func (m FrontierNode) handleConfirmEvent(payload events.ConfirmPayload) error {
+func (m *FrontierNode) handleConfirmEvent(payload events.ConfirmPayload) error {
 	url, err := url.Parse(*payload.URI)
 
 	if err != nil {
@@ -378,7 +434,7 @@ func (m FrontierNode) handleConfirmEvent(payload events.ConfirmPayload) error {
 	return nil
 }
 
-func (m FrontierNode) handleBackoffEvent(payload events.BackoffPayload) error {
+func (m *FrontierNode) handleBackoffEvent(payload events.BackoffPayload) error {
 	url, err := url.Parse(*payload.URI)
 
 	if err != nil {
@@ -394,7 +450,7 @@ func (m FrontierNode) handleBackoffEvent(payload events.BackoffPayload) error {
 	return m.backingOff(payload)
 }
 
-func (m FrontierNode) Handle(data []byte) error {
+func (m *FrontierNode) Handle(data []byte) error {
 	var event events.FrontierEvent
 
 	err := json.Unmarshal(data, &event)
@@ -467,7 +523,7 @@ func (m FrontierNode) Handle(data []byte) error {
 	return nil
 }
 
-func (m FrontierNode) Run() {
+func (m *FrontierNode) Run() {
 	broker, err := m.rabbit.NewBroker(m.config.ExchangeName.Frontier)
 
 	if err != nil {
