@@ -54,7 +54,7 @@ type FrontierNode struct {
 	holter         *heartbeat.Holter
 	planner        *planner.Planner[string, string]
 	filter         Filter
-	parsedFilter   *set.Set[string]
+	parsedFilter   Filter
 	crawlingFilter *set.Set[string]
 
 	backoff *backoff.Manager
@@ -65,6 +65,7 @@ func NewFrontierNode(
 	ctx context.Context,
 	rabbit *messaging.RabbitMQ,
 	filter Filter,
+	filter2 Filter,
 ) *FrontierNode {
 	config := config.GetConfig()
 	broker, err := rabbit.NewBroker(config.ExchangeName.Frontier)
@@ -85,7 +86,7 @@ func NewFrontierNode(
 
 		planner:        planner.NewPlanner[string, string](),
 		filter:         filter,
-		parsedFilter:   set.NewSet[string](),
+		parsedFilter:   filter2,
 		crawlingFilter: set.NewSet[string](),
 
 		backoff: backoff.NewManager(),

@@ -41,6 +41,10 @@ func Normalize(u url.URL) *url.URL {
 
 	u.Fragment = ""
 
+	if u.Path == "" {
+		u.Path = "/"
+	}
+
 	u.Path = path.Clean(u.Path)
 
 	if defaultIndexPath.Contains(u.Path) {
