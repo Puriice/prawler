@@ -75,7 +75,7 @@ func Default() *Config {
 				Multiplier503: 3,
 				Multiplier5XX: 2.5,
 			},
-			MinimumCrawlingDelayInMS: time.Duration(3000),
+			MinimumCrawlingDelayInMS: time.Duration(5000),
 			MaximumCrawlingDelayInMS: time.Duration(60000),
 			MaximumCrawlingDepth:     5,
 			MaximumCrawlingAttempt:   5,
