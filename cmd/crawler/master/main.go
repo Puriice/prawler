@@ -14,7 +14,6 @@ import (
 	"github.com/puriice/golibs/pkg/server"
 	"github.com/purrice/prawler/internal/frontier"
 	"github.com/purrice/prawler/internal/repository"
-	"github.com/purrice/prawler/internal/set"
 )
 
 func main() {
@@ -48,7 +47,7 @@ func main() {
 	crawlerRepository := repository.NewPostgresCrawlerRepository(db)
 	websiteRepository := repository.NewPostgresWebsiteRepository(db)
 
-	filter := set.NewSet[string]()
+	filter := NewBloom(10000000, 0.0001)
 	frontier := frontier.NewFrontierNode(ctx, rabbit, filter)
 	frontier.Setup(
 		crawlerRepository,
