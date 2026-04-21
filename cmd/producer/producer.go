@@ -28,7 +28,7 @@ func main() {
 
 	defer rabbitMQ.Shutdown()
 
-	client, err := frontier.NewClient(rabbitMQ)
+	client, err := frontier.NewClient(context.Background(), rabbitMQ, nil)
 
 	if err != nil {
 		log.Fatal(err)

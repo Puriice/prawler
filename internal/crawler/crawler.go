@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/purrice/prawler/internal/enum"
 	"github.com/purrice/prawler/internal/events"
 	"github.com/purrice/prawler/internal/frontier"
 	"github.com/purrice/prawler/internal/html"
@@ -112,8 +111,8 @@ func (c Crawler) handleCrawlEvent(payload events.CrawlPayload) error {
 	}
 
 	if page.NoFollow {
-		return c.client.ConfirmCrawled(payload.PageUUID,
-			enum.Page.Parsed,
+		return c.client.ConfirmCrawled(
+			payload.PageUUID,
 			resp.StatusCode,
 			*payload.URI,
 			finalURI.String(),
@@ -135,7 +134,6 @@ func (c Crawler) handleCrawlEvent(payload events.CrawlPayload) error {
 
 	return c.client.ConfirmCrawled(
 		payload.PageUUID,
-		enum.Page.Parsed,
 		resp.StatusCode,
 		*payload.URI,
 		finalURI.String(),

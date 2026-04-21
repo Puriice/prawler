@@ -72,10 +72,10 @@ func main() {
 
 	defer db.Close()
 
-	webRecordsRepository := repository.NewPostgresWebsiteRepository(db)
+	website := repository.NewPostgresWebsiteRepository(db)
 
 	fetcher := fetch.NewFecter(nil)
-	client, err := frontier.NewClient(rabbitMQ)
+	client, err := frontier.NewClient(ctx, rabbitMQ, website)
 
 	if err != nil {
 		rabbitMQ.Shutdown()
@@ -86,7 +86,7 @@ func main() {
 	worker := worker.NewManager(ctx, 5, 10)
 	worker.SpawnWorker()
 
-	crawler := crawler.NewCrawler(ctx, cfg.CrawlingPolicy.UserAgent, webRecordsRepository, fetcher, client, worker)
+	crawler := crawler.NewCrawler(ctx, cfg.CrawlingPolicy.UserAgent, website, fetcher, client, worker)
 
 	log.Println("Start listening to hosts producing events.")
 	if err := hostListener.Subscribe(ctx, crawler.Handle); err != nil {

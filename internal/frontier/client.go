@@ -1,6 +1,7 @@
 package frontier
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/purrice/prawler/internal/config"
 	"github.com/purrice/prawler/internal/enum"
 	"github.com/purrice/prawler/internal/events"
+	"github.com/purrice/prawler/internal/repository"
 )
 
 type keys struct {
@@ -18,15 +20,19 @@ type keys struct {
 }
 
 type Client struct {
+	context context.Context
+
 	broker *messaging.RabbitBroker
 	keys   keys
+
+	website repository.WebsiteRepository
 }
 
 type validatable interface {
 	IsValid() error
 }
 
-func NewClient(rabbit *messaging.RabbitMQ) (Client, error) {
+func NewClient(context context.Context, rabbit *messaging.RabbitMQ, website repository.WebsiteRepository) (Client, error) {
 	cfg := config.GetConfig()
 	broker, err := rabbit.NewBroker(cfg.ExchangeName.Frontier)
 
@@ -35,12 +41,16 @@ func NewClient(rabbit *messaging.RabbitMQ) (Client, error) {
 	}
 
 	return Client{
+		context: context,
+
 		broker: broker,
 		keys: keys{
 			Register: fmt.Sprintf("%s.uri", cfg.ExchangeName.Frontier),
 			Confirm:  fmt.Sprintf("%s.confirm", cfg.ExchangeName.Frontier),
 			Backoff:  fmt.Sprintf("%s.backoff", cfg.ExchangeName.Frontier),
 		},
+
+		website: website,
 	}, nil
 }
 
@@ -100,6 +110,10 @@ func (c Client) SkipCrawl(
 		Timestamp: time.Now(),
 	}
 
+	if c.website != nil {
+		c.website.SetPageStatus(c.context, pageUUID, enum.Page.Skipped)
+	}
+
 	return c.sendPayload(
 		c.keys.Confirm,
 		events.FrontierCrawlConfirm,
@@ -138,7 +152,6 @@ func (c Client) FailedCrawled(
 
 func (c Client) ConfirmCrawled(
 	pageUUID string,
-	status enum.PageStatus,
 	httpStatus int,
 	original string,
 	final string,
@@ -146,7 +159,7 @@ func (c Client) ConfirmCrawled(
 	depth int,
 ) error {
 	payload := events.ConfirmPayload{
-		Status:     status,
+		Status:     enum.Page.Parsed,
 		HTTPStatus: httpStatus,
 
 		PageUUID: &pageUUID,
@@ -158,6 +171,10 @@ func (c Client) ConfirmCrawled(
 		Depth: depth,
 
 		Timestamp: time.Now(),
+	}
+
+	if c.website != nil {
+		c.website.SetPageStatus(c.context, pageUUID, enum.Page.Parsed)
 	}
 
 	return c.sendPayload(
