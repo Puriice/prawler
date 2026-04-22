@@ -6,11 +6,11 @@
 		"git": "https://github.com/Puriice/prawler"
 	},
 	"exchange_name": {
-		"uri": "prawler.test.uri",
-		"blacklists": "prawler.test.blacklists",
-		"frontier": "prawler.test.frontier",
-		"backoff": "prawler.test.backoff",
-		"embedding": "prawler.test.embedding"
+		"uri": "prawler.uri",
+		"blacklists": "prawler.blacklists",
+		"frontier": "prawler.frontier",
+		"backoff": "prawler.backoff",
+		"embedding": "prawler.embedding"
 	},
 	"queue_name": {
 		"uri": "prawler.test.uri",
@@ -24,7 +24,7 @@
 			"multiplier_503": 3,
 			"multiplier_5XX": 2.5
 		},
-		"minimum_crawling_delay_ms": 5000,
+		"minimum_crawling_delay_ms": 3000,
 		"maximum_crawling_delay_ms": 60000,
 		"maximum_crawling_depth": 5,
 		"maximum_crawling_attempt": 5

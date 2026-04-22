@@ -160,19 +160,19 @@ func (c *Crawler) handleCrawlEvent(payload events.CrawlPayload) error {
 
 	switch {
 	case resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusServiceUnavailable:
-		attempt := c.backoff.Attempt(origin)
+		attempt := c.backoff.Attempt(targetURL.String())
 
 		if attempt+1 >= c.config.CrawlingPolicy.MaximumCrawlingAttempt {
 			c.websiteRepository.SetPageStatus(c.ctx, payload.PageUUID, enum.Page.Skipped)
 
 			switch resp.StatusCode {
 			case http.StatusTooManyRequests:
-				log.Printf("Maximum attempt exceeded with status %d: Retry %s after 1 hour for this domain.", resp.StatusCode, targetURL)
+				log.Printf("Maximum attempt exceeded with status %d: Retry %s after 2 hour for this domain.", resp.StatusCode, targetURL)
 				c.backoff.Reset(origin)
-				c.backoff.Set(origin, time.Hour, attempt+1)
+				c.backoff.Set(origin, 2*time.Hour, attempt+1)
 
-				c.publishToBackoff(time.Hour, payload)
-				return c.client.BackoffDomain(targetURL.String(), attempt, time.Hour)
+				c.publishToBackoff(2*time.Hour, payload)
+				return c.client.BackoffDomain(targetURL.String(), attempt, 2*time.Hour)
 			case http.StatusServiceUnavailable:
 				log.Printf("Maximum attempt exceeded with status %d: Retry %s after 1 hour for this page.", resp.StatusCode, targetURL)
 				c.backoff.Reset(targetURL.String())

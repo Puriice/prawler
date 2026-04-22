@@ -14,7 +14,7 @@ import (
 	"github.com/purrice/prawler/internal/worker"
 )
 
-const workerCount = 5
+const workerCount = 6
 
 func main() {
 	env.Init()
@@ -41,7 +41,7 @@ func main() {
 	listerConfig.PrefetchCount = workerCount
 	listerConfig.Binding = false
 
-	wk := worker.NewManager(ctx, workerCount, 5)
+	wk := worker.NewManager(ctx, workerCount, 2)
 	wk.SpawnWorker()
 
 	migrator := migrator{
