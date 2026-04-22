@@ -74,6 +74,19 @@ func (m *Manager) Add(sitekey string, httpStatus int, retryAfter time.Duration) 
 	return time.Until(s.next)
 }
 
+func (m *Manager) Set(sitekey string, delay time.Duration) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	s, ok := m.states[sitekey]
+	if !ok {
+		s = &state{}
+		m.states[sitekey] = s
+	}
+
+	s.next = time.Now().Add(delay)
+}
+
 func (m *Manager) Attempt(sitekey string) int {
 	m.mu.Lock()
 	defer m.mu.Unlock()

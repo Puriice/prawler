@@ -383,20 +383,35 @@ func (m *FrontierNode) backingOff(p events.BackoffPayload) error {
 	sitekey := uri.SiteKey(*url)
 	attempt := m.backoff.Attempt(sitekey)
 
+	now := time.Now()
+	payload := events.URIPayload{
+		URI:       p.URI,
+		Depth:     p.Depth,
+		Timestamp: &now,
+	}
+
 	if attempt+1 >= m.config.CrawlingPolicy.MaximumCrawlingAttempt {
-		log.Printf("Maximum attempt exceeded for: %s", sitekey)
 		m.websiteRepository.SetPageStatus(m.ctx, *p.PageUUID, enum.Page.Skipped)
-		m.blacklists.Add(*p.URI)
+
+		switch p.HTTPStatus {
+		case 403:
+			log.Printf("Maximum attempt exceeded with status %d: blacklist %s", p.HTTPStatus, *p.URI)
+			m.blacklists.Add(*p.URI)
+		case 400, 401, 402, 404:
+			log.Printf("Maximum attempt exceeded with status %d: Skipping this page %s", p.HTTPStatus, *p.URI)
+			return m.websiteRepository.SetPageStatus(m.ctx, *p.PageUUID, enum.Page.Skipped)
+		case 429:
+			log.Printf("Maximum attempt exceeded with status %d: Retry %s after 1 hour for this domain.", p.HTTPStatus, *p.URI)
+			m.backoff.Reset(sitekey)
+			m.backoff.Set(sitekey, time.Hour)
+		case 503:
+			log.Printf("Maximum attempt exceeded with status %d: Retry %s after 1 hour for this page.", p.HTTPStatus, *p.URI)
+			m.websiteRepository.SetPageStatus(m.ctx, *p.PageUUID, enum.Page.Failed)
+			return m.delayPublish(time.Hour, payload)
+		}
 	} else {
 		delay := m.backoff.Add(sitekey, p.HTTPStatus, p.RetryAfter)
 		log.Printf("[Attempt #%d] Retry %s After %.0fs", attempt, sitekey, delay.Seconds())
-		now := time.Now()
-
-		payload := events.URIPayload{
-			URI:       p.URI,
-			Depth:     p.Depth,
-			Timestamp: &now,
-		}
 
 		return m.delayPublish(delay, payload)
 	}
