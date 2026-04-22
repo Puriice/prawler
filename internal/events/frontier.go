@@ -77,27 +77,36 @@ func (p ConfirmPayload) IsValid() error {
 }
 
 type BackoffPayload struct {
-	PageUUID *string `json:"page_uuid,omitempty"`
-	Depth    int     `json:"depth"`
+	Type enum.BackoffType `json:"type,omitempty"`
 
-	URI        *string       `json:"url,omitempty"`
-	HTTPStatus int           `json:"http_status,omitempty"`
-	RetryAfter time.Duration `json:"retry_after"`
+	PageUUID *string `json:"page_uuid,omitempty"`
+
+	URI   *string `json:"url,omitempty"`
+	Depth int     `json:"depth"`
+
+	Attempt      int       `json:"attempt"`
+	BackoffUntil time.Time `json:"retry_after"`
 
 	Timestamp time.Time `json:"timestamp"`
 }
 
 func (p BackoffPayload) IsValid() error {
-	if p.PageUUID == nil || p.URI == nil {
-		return types.ErrMissingField
-	}
-
-	if p.HTTPStatus < 100 || p.HTTPStatus > 599 {
+	if !p.Type.IsValid() {
 		return types.ErrInvalidField
 	}
 
-	if _, err := uuid.Parse(*p.PageUUID); err != nil {
-		return types.ErrInvalidUUID
+	if p.URI == nil {
+		return types.ErrMissingField
+	}
+
+	if p.Type == enum.Backoff.Page {
+		if p.PageUUID == nil {
+			return types.ErrMissingField
+		}
+
+		if _, err := uuid.Parse(*p.PageUUID); err != nil {
+			return types.ErrInvalidUUID
+		}
 	}
 
 	return nil

@@ -28,6 +28,11 @@ type ExchangeConfig struct {
 	Embedding  string `json:"embedding"`
 }
 
+type QueueConfig struct {
+	URI     string `json:"uri"`
+	Backoff string `json:"backoff"`
+}
+
 type BackoffPolicy struct {
 	Jitter        float64 `json:"jitter"`
 	Multiplier429 float64 `json:"multiplier_429"`
@@ -48,13 +53,13 @@ type Config struct {
 	Version        string         `json:"version"`
 	Contact        Contact        `json:"contact"`
 	ExchangeName   ExchangeConfig `json:"exchange_name"`
-	QueueName      string         `json:"queue_name"`
+	QueueName      QueueConfig    `json:"queue_name"`
 	CrawlingPolicy CrawlingPolicy `json:"policy"`
 }
 
 func Default() *Config {
 	return &Config{
-		Version: "1.2",
+		Version: "1.3",
 		Contact: Contact{
 			Email: "purinutt.amartayavis@g.swu.ac.th",
 			Git:   "https://github.com/Puriice/prawler",
@@ -66,7 +71,10 @@ func Default() *Config {
 			Backoff:    "prawler.backoff",
 			Embedding:  "prawler.embedding",
 		},
-		QueueName: "prawler.uri",
+		QueueName: QueueConfig{
+			URI:     "prawler.uri",
+			Backoff: "prawler.backoff",
+		},
 		CrawlingPolicy: CrawlingPolicy{
 			UserAgent: "Prawler",
 			Backoff: BackoffPolicy{
@@ -106,5 +114,5 @@ func GetConfig() *Config {
 }
 
 func (c Config) GetDisplayUserAgent() string {
-	return fmt.Sprintf("%s/%s (+%s; %s Email: %s)", c.CrawlingPolicy.UserAgent, c.Version, c.Contact.Git, c.Contact.Description, c.Contact.Email)
+	return fmt.Sprintf("%s/%s (+%s; %s; Email: %s)", c.CrawlingPolicy.UserAgent, c.Version, c.Contact.Git, c.Contact.Description, c.Contact.Email)
 }

@@ -7,7 +7,7 @@ import (
 
 // OriginKey returns the standard origin (scheme + host + port)
 // without modifying the input URL.
-func OriginKey(uri url.URL) url.URL {
+func OriginKey(uri url.URL) *url.URL {
 	uri.Path = ""
 	uri.RawQuery = ""
 	uri.Fragment = ""
@@ -33,5 +33,5 @@ func OriginKey(uri url.URL) url.URL {
 		uri.Host = host
 	}
 
-	return uri
+	return &uri
 }

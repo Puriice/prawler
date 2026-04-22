@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/url"
 	"os"
@@ -46,23 +45,6 @@ func main() {
 
 	defer rabbitMQ.Shutdown()
 
-	hostBroker, err := rabbitMQ.NewBroker(cfg.ExchangeName.URI)
-
-	if err != nil {
-		rabbitMQ.Shutdown()
-		log.Fatal(err)
-	}
-
-	qName := fmt.Sprintf("%s.%s", cfg.QueueName, heart.UUID())
-	log.Printf("Listening to: %s", qName)
-	hostListenerConfig := messaging.NewRabbitListenerConfig(qName, qName)
-	hostListener, err := hostBroker.NewListenerWithConfig(hostListenerConfig)
-
-	if err != nil {
-		rabbitMQ.Shutdown()
-		log.Fatal(err)
-	}
-
 	db, err := db.NewDatabase()
 
 	if err != nil {
@@ -86,10 +68,10 @@ func main() {
 	worker := worker.NewManager(ctx, 5, 10)
 	worker.SpawnWorker()
 
-	crawler := crawler.NewCrawler(ctx, cfg.CrawlingPolicy.UserAgent, website, fetcher, client, worker)
+	crawler := crawler.NewCrawler(ctx, heart.UUID(), cfg.CrawlingPolicy.UserAgent, website, fetcher, client, worker)
+	crawler.Setup(rabbitMQ)
 
-	log.Println("Start listening to hosts producing events.")
-	if err := hostListener.Subscribe(ctx, crawler.Handle); err != nil {
+	if err := crawler.Run(); err != nil {
 		log.Println(err)
 	}
 

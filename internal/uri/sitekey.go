@@ -9,7 +9,7 @@ import (
 // StickySessionKey returns a normalized key for session affinity.
 // It ignores scheme differences (http/https) and treats subdomains
 // as the same site (e.g. api.example.com → example.com).
-func SiteKey(uri url.URL) string {
+func Origin(uri url.URL) string {
 	uri.Scheme = ""
 
 	host := uri.Hostname()

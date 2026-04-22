@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/puriice/golibs/pkg/messaging"
+	"github.com/purrice/prawler/internal/backoff"
 	"github.com/purrice/prawler/internal/config"
 	"github.com/purrice/prawler/internal/enum"
 	"github.com/purrice/prawler/internal/events"
@@ -21,9 +22,12 @@ type keys struct {
 
 type Client struct {
 	context context.Context
+	config  *config.Config
 
 	broker *messaging.RabbitBroker
-	keys   keys
+
+	keys    keys
+	backoff *backoff.Manager
 
 	website repository.WebsiteRepository
 }
@@ -42,8 +46,11 @@ func NewClient(context context.Context, rabbit *messaging.RabbitMQ, website repo
 
 	return Client{
 		context: context,
+		config:  cfg,
 
 		broker: broker,
+
+		backoff: backoff.NewManager(),
 		keys: keys{
 			Register: fmt.Sprintf("%s.uri", cfg.ExchangeName.Frontier),
 			Confirm:  fmt.Sprintf("%s.confirm", cfg.ExchangeName.Frontier),
@@ -185,18 +192,46 @@ func (c Client) ConfirmCrawled(
 	)
 }
 
-func (c Client) Backoff(
-	pageUUID string,
+func (c Client) BackoffDomain(
 	url string,
-	httpStatus int,
+	attempt int,
 	retryAfter time.Duration,
 ) error {
 	payload := events.BackoffPayload{
-		PageUUID: &pageUUID,
+		Type: enum.Backoff.Domain,
 
-		URI:        &url,
-		HTTPStatus: httpStatus,
-		RetryAfter: retryAfter,
+		URI: &url,
+
+		Attempt:      attempt,
+		BackoffUntil: time.Now().Add(retryAfter),
+
+		Timestamp: time.Now(),
+	}
+
+	return c.sendPayload(
+		c.keys.Backoff,
+		events.FrontierBackoff,
+		payload,
+	)
+}
+
+func (c Client) BackoffPage(
+	pageUUID string,
+	url string,
+	depth int,
+	attempt int,
+	retryAfter time.Duration,
+) error {
+	payload := events.BackoffPayload{
+		Type: enum.Backoff.Domain,
+
+		PageUUID: nil,
+
+		URI:   &url,
+		Depth: depth,
+
+		Attempt:      attempt,
+		BackoffUntil: time.Now().Add(retryAfter),
 
 		Timestamp: time.Now(),
 	}

@@ -53,7 +53,7 @@ func (f *Fetcher) Fetch(endpoint url.URL) (*http.Response, error) {
 
 func (f *Fetcher) FetchWithContext(ctx context.Context, endpoint url.URL) (*http.Response, error) {
 	config := config.GetConfig()
-	key := uri.SiteKey(endpoint)
+	key := uri.Origin(endpoint)
 
 	limiter := f.getLimiter(key)
 	limiter.Wait(ctx)

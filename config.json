@@ -1,18 +1,21 @@
 {
-	"version": 1.2,
+	"version": "1.3",
 	"contact": {
 		"email": "purinutt.amartayavis@g.swu.ac.th",
 		"description": "Educational Project",
 		"git": "https://github.com/Puriice/prawler"
 	},
 	"exchange_name": {
-		"uri": "prawler.uri",
-		"blacklists": "prawler.blacklists",
-		"frontier": "prawler.frontier",
-		"backoff": "prawler.backoff",
-		"embedding": "prawler.embedding"
+		"uri": "prawler.test.uri",
+		"blacklists": "prawler.test.blacklists",
+		"frontier": "prawler.test.frontier",
+		"backoff": "prawler.test.backoff",
+		"embedding": "prawler.test.embedding"
 	},
-	"queue_name": "prawler.uri",
+	"queue_name": {
+		"uri": "prawler.test.uri",
+		"backoff": "prawler.test.backoff"
+	},
 	"policy": {
 		"user_agent": "Prawler",
 		"backoff": {

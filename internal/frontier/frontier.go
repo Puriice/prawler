@@ -44,7 +44,7 @@ type FrontierNode struct {
 
 	rabbit           *messaging.RabbitMQ
 	broker           *messaging.RabbitBroker
-	backoffBroker    *messaging.RabbitBroker
+	crawlerBroker    *messaging.RabbitBroker
 	embbeddingBroker *messaging.RabbitBroker
 
 	websiteRepository repository.WebsiteRepository
@@ -81,19 +81,18 @@ func NewFrontierNode(
 		return nil
 	}
 
-	backoffBroker, err := rabbit.NewBroker(config.ExchangeName.Backoff)
+	crawlerBroker, err := rabbit.NewBroker(config.ExchangeName.URI)
 
 	if err != nil {
 		return nil
 	}
-
 	return &FrontierNode{
 		ctx:    ctx,
 		config: config,
 
 		rabbit:           rabbit,
 		broker:           broker,
-		backoffBroker:    backoffBroker,
+		crawlerBroker:    crawlerBroker,
 		embbeddingBroker: embeddingBroker,
 
 		planner:        planner.NewPlanner[string, string](),
@@ -141,30 +140,8 @@ func (m *FrontierNode) Setup(
 		m.addParsedFilter(page.CanonicalURL)
 	}
 
-	brokerConfig := messaging.NewBrokerConfig()
-	brokerConfig.Kind = messaging.Direct
-	broker, err := m.rabbit.NewBrokerWithConfig(m.config.ExchangeName.Backoff, brokerConfig)
-
-	if err != nil {
-		return
-	}
-
-	key := fmt.Sprintf("%s.uri", m.config.ExchangeName.Frontier)
-
-	args := amqp.Table{
-		"x-dead-letter-exchange":    m.config.ExchangeName.Frontier,
-		"x-dead-letter-routing-key": key,
-	}
-
-	listenerConfig := messaging.NewRabbitListenerConfig(
-		m.config.ExchangeName.Backoff,
-		m.config.ExchangeName.Backoff,
-	)
-	listenerConfig.Args = args
-
-	_, err = broker.NewListenerWithConfig(
-		listenerConfig,
-	)
+	key := fmt.Sprintf("%s.uuid", m.config.ExchangeName.Embedding)
+	_, err := m.embbeddingBroker.NewListener(m.config.ExchangeName.Embedding, key)
 
 	if err != nil {
 		log.Println(err)
@@ -180,6 +157,35 @@ func (m *FrontierNode) handleNodeStatusChanges(node heartbeat.Node) {
 		log.Printf("Remove %s from the planner.", node.UUID)
 		m.planner.RemoveResource(node.UUID)
 	}
+}
+
+func (m *FrontierNode) publish(crawler string, payload events.CrawlEvent) error {
+	key := fmt.Sprintf("%s.%s", m.config.QueueName.URI, crawler)
+
+	log.Printf("Publishing to: %s", key)
+	return m.crawlerBroker.Publish(key, payload)
+}
+
+func (m *FrontierNode) delayPublish(crawler string, delay time.Duration, payload events.CrawlEvent) error {
+	bytes, err := json.Marshal(payload)
+
+	if err != nil {
+		return err
+	}
+
+	key := fmt.Sprintf("%s.%s", m.config.QueueName.Backoff, crawler)
+
+	log.Printf("Publishing to: %s, Delay: %.2f", key, delay.Seconds())
+	return m.crawlerBroker.PublishRaw(
+		key,
+		false,
+		false,
+		amqp.Publishing{
+			ContentType: "application/json",
+			Body:        bytes,
+			Expiration:  strconv.FormatInt(delay.Milliseconds(), 10),
+		},
+	)
 }
 
 func (m *FrontierNode) handleURIRegister(payload events.URIPayload) error {
@@ -198,11 +204,11 @@ func (m *FrontierNode) handleURIRegister(payload events.URIPayload) error {
 	}
 
 	origin := uri.OriginKey(*url)
-	siteKey := uri.SiteKey(*url)
+	siteKey := uri.Origin(*url)
 
 	normalizedURIString := normalizedURI.String()
 
-	domainUUID, err := m.websiteRepository.AddDomain(m.ctx, origin)
+	domainUUID, err := m.websiteRepository.AddDomain(m.ctx, *origin)
 
 	if err != nil {
 		return err
@@ -289,14 +295,7 @@ func (m *FrontierNode) handleURIRegister(payload events.URIPayload) error {
 		return ErrNoAvaliableCrawler
 	}
 
-	broker, err := m.rabbit.NewBroker(m.config.ExchangeName.URI)
-
-	if err != nil {
-		return err
-	}
-
 	now := time.Now()
-	key := fmt.Sprintf("%s.%s", m.config.QueueName, crawlerUUID)
 
 	event := events.CrawlEvent{
 		Type: events.CrawlURI,
@@ -310,8 +309,13 @@ func (m *FrontierNode) handleURIRegister(payload events.URIPayload) error {
 		},
 	}
 
-	log.Printf("Publishing to: %s", key)
-	err = broker.Publish(key, event)
+	delay := max(m.backoff.NextDelay(origin.String()), m.backoff.NextDelay(normalizedURIString))
+
+	if delay > 0 {
+		err = m.delayPublish(crawlerUUID, delay, event)
+	} else {
+		err = m.publish(crawlerUUID, event)
+	}
 
 	if err != nil {
 		return err
@@ -344,83 +348,8 @@ func (m *FrontierNode) addParsedFilter(u string) {
 	m.parsedFilter.Add(normalized.String())
 }
 
-func (m *FrontierNode) delayPublish(delay time.Duration, payload events.URIPayload) error {
-	bytes, err := json.Marshal(payload)
-
-	if err != nil {
-		return err
-	}
-
-	e := events.FrontierEvent{
-		Type:    events.FrontierURIRegister,
-		Payload: bytes,
-	}
-
-	body, err := json.Marshal(e)
-	if err != nil {
-		return err
-	}
-
-	return m.backoffBroker.PublishRaw(
-		m.config.ExchangeName.Backoff,
-		false,
-		false,
-		amqp.Publishing{
-			ContentType: "application/json",
-			Body:        body,
-			Expiration:  strconv.FormatInt(delay.Milliseconds(), 10),
-		},
-	)
-}
-
-func (m *FrontierNode) backingOff(p events.BackoffPayload) error {
-	url, err := url.Parse(*p.URI)
-
-	if err != nil {
-		return err
-	}
-
-	sitekey := uri.SiteKey(*url)
-	attempt := m.backoff.Attempt(sitekey)
-
-	now := time.Now()
-	payload := events.URIPayload{
-		URI:       p.URI,
-		Depth:     p.Depth,
-		Timestamp: &now,
-	}
-
-	if attempt+1 >= m.config.CrawlingPolicy.MaximumCrawlingAttempt {
-		m.websiteRepository.SetPageStatus(m.ctx, *p.PageUUID, enum.Page.Skipped)
-
-		switch p.HTTPStatus {
-		case 403:
-			log.Printf("Maximum attempt exceeded with status %d: blacklist %s", p.HTTPStatus, *p.URI)
-			m.blacklists.Add(*p.URI)
-		case 400, 401, 402, 404:
-			log.Printf("Maximum attempt exceeded with status %d: Skipping this page %s", p.HTTPStatus, *p.URI)
-			return m.websiteRepository.SetPageStatus(m.ctx, *p.PageUUID, enum.Page.Skipped)
-		case 429:
-			log.Printf("Maximum attempt exceeded with status %d: Retry %s after 1 hour for this domain.", p.HTTPStatus, *p.URI)
-			m.backoff.Reset(sitekey)
-			m.backoff.Set(sitekey, time.Hour)
-		case 503:
-			log.Printf("Maximum attempt exceeded with status %d: Retry %s after 1 hour for this page.", p.HTTPStatus, *p.URI)
-			m.websiteRepository.SetPageStatus(m.ctx, *p.PageUUID, enum.Page.Failed)
-			return m.delayPublish(time.Hour, payload)
-		}
-	} else {
-		delay := m.backoff.Add(sitekey, p.HTTPStatus, p.RetryAfter)
-		log.Printf("[Attempt #%d] Retry %s After %.0fs", attempt, sitekey, delay.Seconds())
-
-		return m.delayPublish(delay, payload)
-	}
-
-	return nil
-}
-
 func (m *FrontierNode) handleConfirmEvent(payload events.ConfirmPayload) error {
-	url, err := url.Parse(*payload.URI)
+	targetURL, err := url.Parse(*payload.URI)
 
 	if err != nil {
 		return err
@@ -430,36 +359,33 @@ func (m *FrontierNode) handleConfirmEvent(payload events.ConfirmPayload) error {
 
 	m.websiteRepository.SetPageStatus(m.ctx, *payload.PageUUID, payload.Status)
 
-	sitekey := uri.SiteKey(*url)
-	normalized := uri.Normalize(*url)
+	origin := uri.Origin(*targetURL)
+	normalized := uri.Normalize(*targetURL)
 
 	m.crawlingFilter.Remove(normalized.String())
 
 	switch payload.Status {
 	case enum.Page.Parsed:
-		m.backoff.Reset(sitekey)
+		m.backoff.Reset(origin)
+		m.backoff.Reset(normalized.String())
+
+		if url, err := url.Parse(payload.FinalURI); err != nil && payload.FinalURI != "" {
+			m.backoff.Reset(uri.Normalize(*url).String())
+		}
+
+		if url, err := url.Parse(payload.Canonical); err != nil && payload.Canonical != "" {
+			m.backoff.Reset(uri.Normalize(*url).String())
+		}
+
 		m.embbeddingBroker.Publish(fmt.Sprintf("%s.uuid", m.config.ExchangeName.Embedding), events.EmbeddingEvent{
 			Type:     events.EventEmbedding,
 			PageUUID: *payload.PageUUID,
 		})
 		fallthrough
-	case enum.Page.Skipped:
+	case enum.Page.Skipped, enum.Page.Failed:
 		m.addFilter(*payload.URI)
 		m.addFilter(payload.Canonical)
 		m.addFilter(payload.FinalURI)
-	case enum.Page.Failed:
-		return m.backingOff(
-			events.BackoffPayload{
-				PageUUID: payload.PageUUID,
-				Depth:    payload.Depth,
-
-				URI:        &payload.FinalURI,
-				HTTPStatus: payload.HTTPStatus,
-				RetryAfter: 0,
-
-				Timestamp: payload.Timestamp,
-			},
-		)
 	}
 
 	return nil
@@ -472,13 +398,33 @@ func (m *FrontierNode) handleBackoffEvent(payload events.BackoffPayload) error {
 		return err
 	}
 
-	log.Printf("Crawled %s Failed with status %d backoff for the moment", *payload.URI, payload.HTTPStatus)
-	m.websiteRepository.SetPageStatus(m.ctx, *payload.PageUUID, enum.Page.Failed)
-
 	normalized := uri.Normalize(*url)
 	m.crawlingFilter.Remove(normalized.String())
+	delay := time.Until(payload.BackoffUntil)
 
-	return m.backingOff(payload)
+	if delay <= 0 {
+		switch payload.Type {
+		case enum.Backoff.Domain:
+			origin := uri.OriginKey(*url).String()
+			m.backoff.Reset(origin)
+		case enum.Backoff.Page:
+			m.backoff.Reset(*payload.URI)
+		}
+		return nil
+	}
+
+	switch payload.Type {
+	case enum.Backoff.Domain:
+		origin := uri.OriginKey(*url).String()
+		m.backoff.Set(origin, delay, payload.Attempt+1)
+
+	case enum.Backoff.Page:
+		m.websiteRepository.SetPageStatus(m.ctx, *payload.PageUUID, enum.Page.Failed)
+		m.backoff.Set(*payload.URI, delay, payload.Attempt+1)
+
+	}
+
+	return nil
 }
 
 func (m *FrontierNode) Handle(data []byte) error {
@@ -536,6 +482,11 @@ func (m *FrontierNode) Handle(data []byte) error {
 		var payload events.BackoffPayload
 
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			log.Println(err)
+			return nil
+		}
+
+		if err := payload.IsValid(); err != nil {
 			log.Println(err)
 			return nil
 		}

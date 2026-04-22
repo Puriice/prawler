@@ -184,6 +184,16 @@ func makeHandler(port int) http.HandlerFunc {
 		log.Printf("User-Agent: %s", r.UserAgent())
 		rng := newRand()
 
+		if rng.Float64() < 0.2 {
+
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			w.Header().Set("Retry-After", "3")
+			w.WriteHeader(http.StatusTooManyRequests)
+			fmt.Fprintln(w, "429 Too Many Requests — rate limited (simulated)")
+			log.Println("429 Too Many Requests — rate limited (simulated)")
+			return
+		}
+
 		// ── route: /  →  index page ──────────────────────────────────────────
 		if r.URL.Path == "/" || r.URL.Path == "" {
 			serveIndexPage(w, port, rng)
