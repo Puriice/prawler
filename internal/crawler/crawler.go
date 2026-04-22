@@ -80,7 +80,7 @@ func (c Crawler) handleCrawlEvent(payload events.CrawlPayload) error {
 	case resp.StatusCode == 429 || resp.StatusCode >= 500:
 		return c.client.Backoff(payload.PageUUID, *payload.URI, resp.StatusCode, html.ParseRetryAfter(resp))
 	case resp.StatusCode >= 400 && resp.StatusCode < 500:
-		return c.client.FailedCrawled(payload.PageUUID, resp.StatusCode, *payload.URI, finalURI.String(), payload.Depth)
+		return c.client.SkipCrawl(payload.PageUUID, resp.StatusCode, *payload.URI, finalURI.String(), payload.Depth)
 	case resp.StatusCode != 200:
 		return c.client.SkipCrawl(payload.PageUUID, resp.StatusCode, *payload.URI, finalURI.String(), payload.Depth)
 	}
