@@ -42,9 +42,10 @@ type FrontierNode struct {
 
 	client Client
 
-	rabbit     *messaging.RabbitMQ
-	broker     *messaging.RabbitBroker
-	embbedding *messaging.RabbitBroker
+	rabbit           *messaging.RabbitMQ
+	broker           *messaging.RabbitBroker
+	backoffBroker    *messaging.RabbitBroker
+	embbeddingBroker *messaging.RabbitBroker
 
 	websiteRepository repository.WebsiteRepository
 	crawlerRepository repository.CrawlerRepository
@@ -74,15 +75,26 @@ func NewFrontierNode(
 		return nil
 	}
 
-	embedding, err := rabbit.NewBroker(config.ExchangeName.Embedding)
+	embeddingBroker, err := rabbit.NewBroker(config.ExchangeName.Embedding)
+
+	if err != nil {
+		return nil
+	}
+
+	backoffBroker, err := rabbit.NewBroker(config.ExchangeName.Backoff)
+
+	if err != nil {
+		return nil
+	}
 
 	return &FrontierNode{
 		ctx:    ctx,
 		config: config,
 
-		rabbit:     rabbit,
-		broker:     broker,
-		embbedding: embedding,
+		rabbit:           rabbit,
+		broker:           broker,
+		backoffBroker:    backoffBroker,
+		embbeddingBroker: embeddingBroker,
 
 		planner:        planner.NewPlanner[string, string](),
 		filter:         filter,
@@ -332,6 +344,35 @@ func (m *FrontierNode) addParsedFilter(u string) {
 	m.parsedFilter.Add(normalized.String())
 }
 
+func (m *FrontierNode) delayPublish(delay time.Duration, payload events.URIPayload) error {
+	bytes, err := json.Marshal(payload)
+
+	if err != nil {
+		return err
+	}
+
+	e := events.FrontierEvent{
+		Type:    events.FrontierURIRegister,
+		Payload: bytes,
+	}
+
+	body, err := json.Marshal(e)
+	if err != nil {
+		return err
+	}
+
+	return m.backoffBroker.PublishRaw(
+		m.config.ExchangeName.Backoff,
+		false,
+		false,
+		amqp.Publishing{
+			ContentType: "application/json",
+			Body:        body,
+			Expiration:  strconv.FormatInt(delay.Milliseconds(), 10),
+		},
+	)
+}
+
 func (m *FrontierNode) backingOff(p events.BackoffPayload) error {
 	url, err := url.Parse(*p.URI)
 
@@ -351,39 +392,13 @@ func (m *FrontierNode) backingOff(p events.BackoffPayload) error {
 		log.Printf("[Attempt #%d] Retry %s After %.0fs", attempt, sitekey, delay.Seconds())
 		now := time.Now()
 
-		payloadBody := events.URIPayload{
+		payload := events.URIPayload{
 			URI:       p.URI,
 			Depth:     p.Depth,
 			Timestamp: &now,
 		}
 
-		bytes, err := json.Marshal(payloadBody)
-
-		if err != nil {
-			return err
-		}
-
-		payload := events.FrontierEvent{
-			Type:    events.FrontierURIRegister,
-			Payload: bytes,
-		}
-
-		body, err := json.Marshal(payload)
-		if err != nil {
-			return err
-		}
-
-		return m.rabbit.Channel().Publish(
-			m.config.ExchangeName.Backoff,
-			m.config.ExchangeName.Backoff,
-			false,
-			false,
-			amqp.Publishing{
-				ContentType: "application/json",
-				Body:        body,
-				Expiration:  strconv.FormatInt(delay.Milliseconds(), 10),
-			},
-		)
+		return m.delayPublish(delay, payload)
 	}
 
 	return nil
@@ -408,7 +423,7 @@ func (m *FrontierNode) handleConfirmEvent(payload events.ConfirmPayload) error {
 	switch payload.Status {
 	case enum.Page.Parsed:
 		m.backoff.Reset(sitekey)
-		m.embbedding.Publish(fmt.Sprintf("%s.uuid", m.config.ExchangeName.Embedding), events.EmbeddingEvent{
+		m.embbeddingBroker.Publish(fmt.Sprintf("%s.uuid", m.config.ExchangeName.Embedding), events.EmbeddingEvent{
 			Type:     events.EventEmbedding,
 			PageUUID: *payload.PageUUID,
 		})
