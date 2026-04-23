@@ -13,8 +13,8 @@
 		"embedding": "prawler.embedding"
 	},
 	"queue_name": {
-		"uri": "prawler.test.uri",
-		"backoff": "prawler.test.backoff"
+		"uri": "prawler.uri",
+		"backoff": "prawler.backoff"
 	},
 	"policy": {
 		"user_agent": "Prawler",
