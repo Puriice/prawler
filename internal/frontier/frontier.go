@@ -101,7 +101,7 @@ func NewFrontierNode(
 		crawlingFilter: set.NewSet[string](),
 
 		backoff: backoff.NewManager(),
-		worker:  worker.NewManager(ctx, 6, 2),
+		worker:  worker.NewManager(ctx, 6, 1),
 	}
 }
 
