@@ -279,7 +279,7 @@ func (c *Crawler) Handle(data []byte) error {
 			return nil
 		}
 
-		siteKey := uri.Origin(*url)
+		siteKey := uri.StickySessionKey(*url)
 
 		workerId, ok := c.planner.Plan(siteKey)
 

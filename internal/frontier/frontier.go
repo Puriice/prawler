@@ -204,7 +204,7 @@ func (m *FrontierNode) handleURIRegister(payload events.URIPayload) error {
 	}
 
 	origin := uri.OriginKey(*url)
-	siteKey := uri.Origin(*url)
+	siteKey := uri.StickySessionKey(*url)
 
 	normalizedURIString := normalizedURI.String()
 
@@ -359,14 +359,14 @@ func (m *FrontierNode) handleConfirmEvent(payload events.ConfirmPayload) error {
 
 	m.websiteRepository.SetPageStatus(m.ctx, *payload.PageUUID, payload.Status)
 
-	origin := uri.Origin(*targetURL)
+	origin := uri.OriginKey(*targetURL)
 	normalized := uri.Normalize(*targetURL)
 
 	m.crawlingFilter.Remove(normalized.String())
 
 	switch payload.Status {
 	case enum.Page.Parsed:
-		m.backoff.Reset(origin)
+		m.backoff.Reset(origin.String())
 		m.backoff.Reset(normalized.String())
 
 		if url, err := url.Parse(payload.FinalURI); err != nil && payload.FinalURI != "" {

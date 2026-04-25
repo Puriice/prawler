@@ -71,7 +71,7 @@ func (r PostgresWebsiteRepository) GetBlacklistDomain(context context.Context) [
 			continue
 		}
 
-		sitekey := uri.Origin(*url)
+		sitekey := uri.StickySessionKey(*url)
 
 		blacklists = append(blacklists, sitekey)
 	}

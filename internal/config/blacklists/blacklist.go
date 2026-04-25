@@ -64,7 +64,7 @@ func (b *Blacklists) addWithoutSave(urls ...string) {
 
 	for _, u := range urls {
 		if url, err := url.Parse(u); err == nil {
-			sitekey := uri.Origin(*url)
+			sitekey := uri.StickySessionKey(*url)
 
 			b.sets[sitekey] = struct{}{}
 		}
@@ -78,7 +78,7 @@ func (b *Blacklists) Add(urls ...string) {
 	for _, u := range urls {
 		if url, err := url.Parse(u); err == nil {
 			origin := uri.OriginKey(*url)
-			sitekey := uri.Origin(*url)
+			sitekey := uri.StickySessionKey(*url)
 
 			b.sets[sitekey] = struct{}{}
 			b.repo.BlacklistDomain(context.Background(), *origin)
@@ -96,7 +96,7 @@ func (b *Blacklists) Contains(u string) bool {
 		return false
 	}
 
-	sitekey := uri.Origin(*url)
+	sitekey := uri.StickySessionKey(*url)
 
 	_, ok := b.sets[sitekey]
 
@@ -114,7 +114,7 @@ func (b *Blacklists) Remove(u string) {
 	}
 
 	origin := uri.OriginKey(*url)
-	sitekey := uri.Origin(*url)
+	sitekey := uri.StickySessionKey(*url)
 
 	delete(b.sets, sitekey)
 	b.repo.BlacklistDomain(context.Background(), *origin)
