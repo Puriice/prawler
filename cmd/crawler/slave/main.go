@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/puriice/golibs/pkg/db"
 	"github.com/puriice/golibs/pkg/env"
@@ -56,7 +58,11 @@ func main() {
 
 	website := repository.NewPostgresWebsiteRepository(db)
 
-	fetcher := fetch.NewFecter(nil)
+	httpClient := http.Client{
+		Timeout: 3 * time.Second,
+	}
+
+	fetcher := fetch.NewFecter(&httpClient)
 	client, err := frontier.NewClient(ctx, rabbitMQ, website)
 
 	if err != nil {
