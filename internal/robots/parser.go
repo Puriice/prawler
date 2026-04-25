@@ -23,7 +23,7 @@ var ErrNotAllowed = errors.New("Not Allowed")
 
 func (r RobotParser) fetchRobots(url url.URL) (*string, error) {
 	url.Path = "/robots.txt"
-	res, err := r.fetcher.Fetch(url)
+	res, err := r.fetcher.FetchWithContext(r.context, url)
 
 	if err != nil {
 		return nil, err

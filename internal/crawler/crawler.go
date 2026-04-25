@@ -149,7 +149,7 @@ func (c *Crawler) handleCrawlEvent(payload events.CrawlPayload) error {
 		return c.publishToBackoff(delay, payload)
 	}
 
-	resp, err := c.fetcher.Fetch(*targetURL)
+	resp, err := c.fetcher.FetchWithContext(c.ctx, *targetURL)
 
 	if err != nil {
 		return err

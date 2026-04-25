@@ -114,7 +114,7 @@ func (m *FrontierNode) Setup(
 		Timeout: 5 * time.Second,
 	}
 
-	robotParser := robots.NewRobotParser(websiteRepository, fetch.NewFecter(client))
+	robotParser := robots.NewRobotParser(m.ctx, websiteRepository, fetch.NewFecter(client))
 	blacklists := blacklists.NewBlacklist(websiteRepository)
 
 	holter := heartbeat.NewHolter(m.ctx, 5*time.Second, 10*time.Second, 2*time.Second, crawlerRepository)
