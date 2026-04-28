@@ -29,13 +29,11 @@ func (r PostgresWebsiteRepository) GetUnembeddedPages(context context.Context) (
 	rows, err := r.db.Query(
 		context,
 		`
-		SELECT DISTINCT p.id::text
+		SELECT DISTINCT p.uuid::text
 		FROM   pages p
-		JOIN   chunks c ON c.page_id = p.id
-		WHERE  p.noindex   = false
-		AND  p.status   != 'failed'
-		AND  p.status   != 'skipped'
-		AND  c.embedding IS NULL
+		JOIN   chunks c ON c.page_uuid = p.uuid
+		WHERE  p.indexable = true
+		AND  (c.embedding IS NULL OR c.embedding_version = 1)
 		`,
 	)
 
