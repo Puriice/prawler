@@ -23,6 +23,7 @@ type WebsiteRepository interface {
 	GetRobots(context context.Context, domain url.URL) (*string, *time.Time, error)
 	GetFinishedPage(context context.Context) []Page
 	GetLinks(context context.Context, pageUUID string) []string
+	GetPageCache(context context.Context, pageUUID string) (int, *html.PageContent, error)
 	GetPageContent(context context.Context, pageUUID string) (html.PageContent, error)
 
 	AddDomain(context context.Context, domain url.URL) (string, error)

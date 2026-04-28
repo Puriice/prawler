@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -142,77 +143,87 @@ func (c *Crawler) handleCrawlEvent(payload events.CrawlPayload) error {
 		return err
 	}
 
-	origin := uri.OriginKey(*targetURL).String()
-	delay := max(c.backoff.NextDelay(origin), c.backoff.NextDelay(*payload.URI))
+	finalURI := targetURL
+	statusCode, content, err := c.websiteRepository.GetPageCache(c.ctx, payload.PageUUID)
 
-	if delay > 0 {
-		return c.publishToBackoff(delay, payload)
-	}
+	var body io.Reader = strings.NewReader(content.RawHTML)
 
-	resp, err := c.fetcher.FetchWithContext(c.ctx, *targetURL)
+	if err != nil || content.RawHTML == "" {
+		origin := uri.OriginKey(*targetURL).String()
+		delay := max(c.backoff.NextDelay(origin), c.backoff.NextDelay(*payload.URI))
 
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	finalURI := resp.Request.URL
-
-	switch {
-	case resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusServiceUnavailable:
-		attempt := c.backoff.Attempt(targetURL.String())
-
-		if attempt+1 >= c.config.CrawlingPolicy.MaximumCrawlingAttempt {
-			c.websiteRepository.SetPageStatus(c.ctx, payload.PageUUID, enum.Page.Skipped)
-
-			switch resp.StatusCode {
-			case http.StatusTooManyRequests:
-				log.Printf("Maximum attempt exceeded with status %d: Retry %s after 2 hour for this domain.", resp.StatusCode, targetURL)
-				c.backoff.Reset(origin)
-				c.backoff.Set(origin, 2*time.Hour, attempt+1)
-
-				c.publishToBackoff(2*time.Hour, payload)
-				return c.client.BackoffDomain(targetURL.String(), attempt, 2*time.Hour)
-			case http.StatusServiceUnavailable:
-				log.Printf("Maximum attempt exceeded with status %d: Retry %s after 1 hour for this page.", resp.StatusCode, targetURL)
-				c.backoff.Reset(targetURL.String())
-				c.backoff.Set(targetURL.String(), time.Hour, attempt+1)
-
-				c.publishToBackoff(time.Hour, payload)
-				return c.client.BackoffPage(payload.PageUUID, targetURL.String(), payload.Depth, attempt, time.Hour)
-			}
-			return nil
+		if delay > 0 {
+			return c.publishToBackoff(delay, payload)
 		}
 
-		retryAfter := html.ParseRetryAfter(resp)
-		delay := c.backoff.Add(targetURL.String(), resp.StatusCode, retryAfter)
+		resp, err := c.fetcher.FetchWithContext(c.ctx, *targetURL)
 
-		log.Printf("[Attempt #%d] %s backed off until %s", attempt, *payload.URI, time.Now().Add(delay).Format(time.RFC3339))
-		c.websiteRepository.SetPageStatus(c.ctx, payload.PageUUID, enum.Page.Failed)
-		c.publishToBackoff(delay, payload)
-		return c.client.BackoffPage(payload.PageUUID, targetURL.String(), payload.Depth, attempt, delay)
-	case resp.StatusCode != 200:
-		return c.client.SkipCrawl(payload.PageUUID, resp.StatusCode, *payload.URI, finalURI.String(), payload.Depth)
-	}
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
 
-	c.backoff.Reset(origin)
-	c.backoff.Reset(targetURL.String())
-	contentType := strings.ToLower(resp.Header.Get("Content-Type"))
+		finalURI = resp.Request.URL
+		statusCode = resp.StatusCode
 
-	if !strings.Contains(contentType, "text/html") {
-		return c.client.SkipCrawl(payload.PageUUID, resp.StatusCode, *payload.URI, finalURI.String(), payload.Depth)
+		switch {
+		case statusCode == http.StatusTooManyRequests || statusCode == http.StatusServiceUnavailable:
+			attempt := c.backoff.Attempt(targetURL.String())
+
+			if attempt+1 >= c.config.CrawlingPolicy.MaximumCrawlingAttempt {
+				c.websiteRepository.SetPageStatus(c.ctx, payload.PageUUID, enum.Page.Skipped)
+
+				switch statusCode {
+				case http.StatusTooManyRequests:
+					log.Printf("Maximum attempt exceeded with status %d: Retry %s after 2 hour for this domain.", statusCode, targetURL)
+					c.backoff.Reset(origin)
+					c.backoff.Set(origin, 2*time.Hour, attempt+1)
+
+					c.publishToBackoff(2*time.Hour, payload)
+					return c.client.BackoffDomain(targetURL.String(), attempt, 2*time.Hour)
+				case http.StatusServiceUnavailable:
+					log.Printf("Maximum attempt exceeded with status %d: Retry %s after 1 hour for this page.", statusCode, targetURL)
+					c.backoff.Reset(targetURL.String())
+					c.backoff.Set(targetURL.String(), time.Hour, attempt+1)
+
+					c.publishToBackoff(time.Hour, payload)
+					return c.client.BackoffPage(payload.PageUUID, targetURL.String(), payload.Depth, attempt, time.Hour)
+				}
+				return nil
+			}
+
+			retryAfter := html.ParseRetryAfter(resp)
+			delay := c.backoff.Add(targetURL.String(), statusCode, retryAfter)
+
+			log.Printf("[Attempt #%d] %s backed off until %s", attempt, *payload.URI, time.Now().Add(delay).Format(time.RFC3339))
+			c.websiteRepository.SetPageStatus(c.ctx, payload.PageUUID, enum.Page.Failed)
+			c.publishToBackoff(delay, payload)
+			return c.client.BackoffPage(payload.PageUUID, targetURL.String(), payload.Depth, attempt, delay)
+		case statusCode != 200:
+			return c.client.SkipCrawl(payload.PageUUID, statusCode, *payload.URI, finalURI.String(), payload.Depth)
+		}
+
+		c.backoff.Reset(origin)
+		c.backoff.Reset(targetURL.String())
+		contentType := strings.ToLower(resp.Header.Get("Content-Type"))
+
+		if !strings.Contains(contentType, "text/html") {
+			return c.client.SkipCrawl(payload.PageUUID, statusCode, *payload.URI, finalURI.String(), payload.Depth)
+		}
+
+		body = resp.Body
 	}
 
 	parser, err := html.NewParser(finalURI.String())
 
 	if err != nil {
-		return c.client.FailedCrawled(payload.PageUUID, resp.StatusCode, *payload.URI, finalURI.String(), payload.Depth)
+		return c.client.FailedCrawled(payload.PageUUID, statusCode, *payload.URI, finalURI.String(), payload.Depth)
 	}
 
-	meta, page, content, err := parser.ParseReader(resp.Body)
+	meta, page, content, err := parser.ParseReader(body)
 
 	if err != nil {
-		return c.client.FailedCrawled(payload.PageUUID, resp.StatusCode, *payload.URI, finalURI.String(), payload.Depth)
+		return c.client.FailedCrawled(payload.PageUUID, statusCode, *payload.URI, finalURI.String(), payload.Depth)
 	}
 
 	err = c.websiteRepository.AddPageInformation(c.ctx, payload.PageUUID, *finalURI, payload.Depth, *page)
@@ -225,7 +236,7 @@ func (c *Crawler) handleCrawlEvent(payload events.CrawlPayload) error {
 	if page.NoFollow {
 		return c.client.ConfirmCrawled(
 			payload.PageUUID,
-			resp.StatusCode,
+			statusCode,
 			*payload.URI,
 			finalURI.String(),
 			page.CanonicalURL,
@@ -246,7 +257,7 @@ func (c *Crawler) handleCrawlEvent(payload events.CrawlPayload) error {
 
 	return c.client.ConfirmCrawled(
 		payload.PageUUID,
-		resp.StatusCode,
+		statusCode,
 		*payload.URI,
 		finalURI.String(),
 		page.CanonicalURL,

@@ -169,6 +169,34 @@ func (r PostgresWebsiteRepository) GetLinks(context context.Context, pageUUID st
 	return links.Elements
 }
 
+func (r PostgresWebsiteRepository) GetPageCache(context context.Context, pageUUID string) (int, *html.PageContent, error) {
+	var httpStatus int
+	var content html.PageContent
+
+	err := r.db.QueryRow(
+		context,
+		`
+		SELECT 
+			p.http_status,
+			pc.raw_html,
+			pc.extracted_text,
+			pc.word_count 
+		FROM 	  pages 	   p
+		LEFT JOIN page_content pc
+		ON (p.uuid = pc.page_uuid)
+		WHERE page_uuid = $1;
+		`,
+		pageUUID,
+	).Scan(
+		&httpStatus,
+		&content.RawHTML,
+		&content.ExtractedText,
+		&content.WordCount,
+	)
+
+	return httpStatus, &content, err
+}
+
 func (r PostgresWebsiteRepository) GetPageContent(context context.Context, pageUUID string) (html.PageContent, error) {
 	var content html.PageContent
 
