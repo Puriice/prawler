@@ -58,8 +58,9 @@ type FrontierNode struct {
 	parsedFilter   Filter
 	crawlingFilter *set.Set[string]
 
-	backoff *backoff.Manager
-	worker  *worker.WorkerManager
+	backoff        *backoff.Manager
+	worker         *worker.WorkerManager
+	registerWorker *worker.WorkerManager
 }
 
 func NewFrontierNode(
@@ -100,8 +101,9 @@ func NewFrontierNode(
 		parsedFilter:   filter2,
 		crawlingFilter: set.NewSet[string](),
 
-		backoff: backoff.NewManager(),
-		worker:  worker.NewManager(ctx, 6, 1),
+		backoff:        backoff.NewManager(),
+		worker:         worker.NewManager(ctx, 5, 1),
+		registerWorker: worker.NewManager(ctx, 10, 5),
 	}
 }
 
@@ -130,6 +132,7 @@ func (m *FrontierNode) Setup(
 	m.blacklists = blacklists
 	m.robotParser = &robotParser
 
+	m.registerWorker.SpawnWorker()
 	m.worker.SpawnWorker()
 
 	pages := websiteRepository.GetFinishedPage(m.ctx)
@@ -452,7 +455,7 @@ func (m *FrontierNode) Handle(data []byte) error {
 			return nil
 		}
 
-		err = m.worker.AssignTo(0, func() {
+		err = m.registerWorker.Assign(func() {
 			if err := m.handleURIRegister(payload); err != nil {
 				log.Println(err)
 			}
@@ -469,7 +472,7 @@ func (m *FrontierNode) Handle(data []byte) error {
 			return nil
 		}
 
-		err = m.worker.AssignTo(1, func() {
+		err = m.worker.AssignTo(0, func() {
 			if err := m.handleConfirmEvent(payload); err != nil {
 				log.Println(err)
 			}
@@ -491,7 +494,7 @@ func (m *FrontierNode) Handle(data []byte) error {
 			return nil
 		}
 
-		err = m.worker.AssignTo(2, func() {
+		err = m.worker.AssignTo(1, func() {
 			if err := m.handleBackoffEvent(payload); err != nil {
 				log.Println(err)
 			}
@@ -546,7 +549,7 @@ func (m *FrontierNode) Run() {
 	confirmListenerConfig.PrefetchCount = 1
 	backoffListenerConfig.PrefetchCount = 1
 
-	m.worker.AssignTo(3, func() {
+	m.worker.AssignTo(2, func() {
 		listener, err := broker.NewListenerWithConfig(uriListenerConfig)
 
 		if err != nil {
@@ -560,7 +563,7 @@ func (m *FrontierNode) Run() {
 		}
 	})
 
-	m.worker.AssignTo(4, func() {
+	m.worker.AssignTo(3, func() {
 		listener, err := broker.NewListenerWithConfig(confirmListenerConfig)
 
 		if err != nil {
@@ -574,7 +577,7 @@ func (m *FrontierNode) Run() {
 		}
 	})
 
-	m.worker.AssignTo(5, func() {
+	m.worker.AssignTo(4, func() {
 		listener, err := broker.NewListenerWithConfig(backoffListenerConfig)
 
 		if err != nil {

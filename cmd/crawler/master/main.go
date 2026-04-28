@@ -48,7 +48,8 @@ func main() {
 	websiteRepository := repository.NewPostgresWebsiteRepository(db)
 
 	filter := NewBloom(10_000_000, 0.0001)
-	frontier := frontier.NewFrontierNode(ctx, rabbit, filter, filter)
+	filter2 := NewBloom(10_000_000, 0.001)
+	frontier := frontier.NewFrontierNode(ctx, rabbit, filter, filter2)
 	frontier.Setup(
 		crawlerRepository,
 		websiteRepository,
