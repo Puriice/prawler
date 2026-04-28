@@ -56,6 +56,11 @@ func main() {
 
 	defer db.Close()
 
+	if err := db.Ping(ctx); err != nil {
+		rabbitMQ.Shutdown()
+		log.Fatal(err)
+	}
+
 	website := repository.NewPostgresWebsiteRepository(db)
 
 	httpClient := http.Client{
