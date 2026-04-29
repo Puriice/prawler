@@ -244,6 +244,19 @@ func (c *Crawler) handleCrawlEvent(payload events.CrawlPayload) error {
 		)
 	}
 
+	if payload.Depth+2 > c.config.CrawlingPolicy.MaximumCrawlingDepth {
+		log.Printf("Final depth reached stop register uri: %s", targetURL.String())
+
+		return c.client.ConfirmCrawled(
+			payload.PageUUID,
+			statusCode,
+			*payload.URI,
+			finalURI.String(),
+			page.CanonicalURL,
+			payload.Depth,
+		)
+	}
+
 	for _, link := range page.Links {
 		if link.IsNoFollow {
 			continue
