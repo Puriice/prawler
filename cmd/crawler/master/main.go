@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log"
 	"net/http"
 	"os"
@@ -47,6 +48,9 @@ func main() {
 	crawlerRepository := repository.NewPostgresCrawlerRepository(db)
 	websiteRepository := repository.NewPostgresWebsiteRepository(db)
 
+	skipLoad := flag.Bool("skip-parsed", false, "use to skip loading parsed page")
+	flag.Parse()
+
 	filter := NewBloom(10_000_000, 0.0001)
 	filter2 := NewBloom(10_000_000, 0.001)
 	frontier := frontier.NewFrontierNode(ctx, rabbit, filter, filter2)
@@ -54,6 +58,7 @@ func main() {
 		crawlerRepository,
 		websiteRepository,
 		mux,
+		!*skipLoad,
 	)
 
 	server.Handler = mux

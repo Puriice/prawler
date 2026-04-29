@@ -111,6 +111,7 @@ func (m *FrontierNode) Setup(
 	crawlerRepository repository.CrawlerRepository,
 	websiteRepository repository.WebsiteRepository,
 	mux *http.ServeMux,
+	laodFinishPage bool,
 ) {
 	client := &http.Client{
 		Timeout: 5 * time.Second,
@@ -135,12 +136,14 @@ func (m *FrontierNode) Setup(
 	m.registerWorker.SpawnWorker()
 	m.worker.SpawnWorker()
 
-	pages := websiteRepository.GetFinishedPage(m.ctx)
+	if laodFinishPage {
+		pages := websiteRepository.GetFinishedPage(m.ctx)
 
-	log.Printf("Load %d parsed or skipped page", len(pages))
-	for _, page := range pages {
-		m.addParsedFilter(page.URL)
-		m.addParsedFilter(page.CanonicalURL)
+		log.Printf("Load %d parsed or skipped page", len(pages))
+		for _, page := range pages {
+			m.addParsedFilter(page.URL)
+			m.addParsedFilter(page.CanonicalURL)
+		}
 	}
 
 	key := fmt.Sprintf("%s.uuid", m.config.ExchangeName.Embedding)
