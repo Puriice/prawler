@@ -2,6 +2,8 @@
 
 This project is a **web crawler** developed as part of a **university course project**. The purpose of this crawler is to developing a semantic search engine as a final project to Text mining course.
 
+- [Setup Guide](./docs/setup.md)
+
 ## Disclaimer
 
 This crawler was created **strictly for educational purposes**. It is designed to explore publicly accessible web pages
