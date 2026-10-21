@@ -1,0 +1,8 @@
+.git
+**/*.env
+**/playground/
+.DS_Store
+seeds.json
+todo.txt
+docs
+migrations

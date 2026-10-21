@@ -1,0 +1,112 @@
+# Usage:
+#   docker compose up -d --build                 start everything
+#   docker compose up -d --scale slave=3         run 3 crawler slaves
+#   docker compose run --rm producer             register seeds from ./seeds.json
+#
+# Credentials can be overridden in a .env file next to this file.
+
+x-db-url: &db-url postgres://${POSTGRES_USER:-prawler}:${POSTGRES_PASSWORD:-secret}@postgres:5432/${POSTGRES_DB:-prawler}?sslmode=disable
+x-amqp-url: &amqp-url amqp://${RABBITMQ_USER:-prawler}:${RABBITMQ_PASSWORD:-secret}@rabbitmq:5672/
+
+services:
+  postgres:
+    # pgvector is needed by the chunks table; uuidv7() needs Postgres 18
+    image: pgvector/pgvector:pg18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-prawler}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+      POSTGRES_DB: ${POSTGRES_DB:-prawler}
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    # a fixed hostname keeps the node name stable, so the volume's data is reused
+    hostname: rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-prawler}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-secret}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  migrate:
+    image: golang:1.25.6-alpine
+    environment:
+      DB_URL: *db-url
+    volumes:
+      - ./migrations:/migrations:ro
+      - go-cache:/go/pkg/mod
+    command: ["sh", "-c", "go run github.com/pressly/goose/v3/cmd/goose@v3.26.0 -dir /migrations postgres \"$$DB_URL\" up"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  master:
+    build:
+      context: .
+      dockerfile: cmd/crawler/master/Dockerfile
+    image: prawler-master
+    restart: unless-stopped
+    environment:
+      DB_URL: *db-url
+      AMQP_URL: *amqp-url
+      PORT: "5723"
+    ports:
+      - "5723:5723"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  slave:
+    build:
+      context: .
+      dockerfile: cmd/crawler/slave/Dockerfile
+    image: prawler-slave
+    restart: unless-stopped
+    environment:
+      DB_URL: *db-url
+      AMQP_URL: *amqp-url
+      HOLTER_URL: http://master:5723
+    depends_on:
+      master:
+        condition: service_started
+
+  producer:
+    build:
+      context: .
+      dockerfile: cmd/producer/Dockerfile
+    image: prawler-producer
+    profiles: ["tools"]
+    environment:
+      AMQP_URL: *amqp-url
+    volumes:
+      - ./seeds.json:/app/seeds.json:ro
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
+  rabbitmq-data:
+  go-cache:

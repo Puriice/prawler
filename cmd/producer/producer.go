@@ -18,7 +18,7 @@ func main() {
 	}
 
 	env.Init()
-	amqpURL := env.Get("amqp_url", "amqp://guest:guest@localhost:5672")
+	amqpURL := env.Get("AMQP_URL", "amqp://guest:guest@localhost:5672")
 
 	rabbitMQ, err := messaging.NewRabbitMQ(context.Background(), amqpURL)
 
